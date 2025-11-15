@@ -8,7 +8,6 @@
 import type { ExtractedTable } from './TableExtractor';
 import type { ExtractedFigure } from './FigureExtractor';
 import type { AgentResult } from './AgentOrchestrator';
-import CONFIG from '../config';
 
 // ==================== AGENT PROMPT TEMPLATES ====================
 
@@ -98,7 +97,7 @@ class MedicalAgentBridge {
     private geminiApiKey: string;
 
     constructor() {
-        this.geminiApiKey = CONFIG.GEMINI_API_KEY || '';
+        this.geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
     }
 
     /**

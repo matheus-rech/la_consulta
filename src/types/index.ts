@@ -309,6 +309,20 @@ declare global {
     handleDeepAnalysis: () => Promise<void>;
     /** Submit data to Google Sheets */
     handleSubmitToGoogleSheets: (e: Event) => Promise<void>;
+
+    // New: Figure/Table Extraction & Visualization
+    /** Extract figures from PDF using operator interception */
+    extractFiguresFromPDF: () => Promise<void>;
+    /** Extract tables from PDF using geometric detection */
+    extractTablesFromPDF: () => Promise<void>;
+    /** Toggle bounding box provenance visualization */
+    toggleBoundingBoxes: () => Promise<void>;
+    /** Toggle table region visualization */
+    toggleTableRegions: () => Promise<void>;
+
+    // New: Multi-Agent Pipeline
+    /** Run full multi-agent AI pipeline */
+    runFullAIPipeline: () => Promise<void>;
   }
 }
 
