@@ -1,0 +1,727 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
+ * AIService
+ * Handles all Gemini AI integration functions for the Clinical Extractor
+ *
+ * Includes 7 AI-powered functions:
+ * 1. generatePICO() - Extract PICO-T summary (gemini-2.5-flash)
+ * 2. generateSummary() - Generate key findings summary (gemini-flash-latest)
+ * 3. validateFieldWithAI() - Validate field content (gemini-2.5-pro)
+ * 4. findMetadata() - Search for study metadata (gemini-2.5-flash + Google Search)
+ * 5. handleExtractTables() - Extract tables from document (gemini-2.5-pro)
+ * 6. handleImageAnalysis() - Analyze uploaded images (gemini-2.5-flash)
+ * 7. handleDeepAnalysis() - Deep document analysis (gemini-2.5-pro + thinking)
+ */
+
+import { GoogleGenAI, Type } from "@google/genai";
+import AppStateManager from '../state/AppStateManager';
+import ExtractionTracker from '../data/ExtractionTracker';
+import StatusManager from '../utils/status';
+
+// ==================== AI CLIENT INITIALIZATION ====================
+
+/**
+ * Get Gemini API Key from Vite environment variables
+ * Supports multiple environment variable names for backward compatibility:
+ * - VITE_GEMINI_API_KEY (preferred)
+ * - VITE_API_KEY (alternative)
+ * - VITE_GOOGLE_API_KEY (alternative)
+ *
+ * In Vite, environment variables must be prefixed with VITE_ to be exposed to the client
+ * Access via import.meta.env instead of process.env
+ */
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY ||
+                import.meta.env.VITE_API_KEY ||
+                import.meta.env.VITE_GOOGLE_API_KEY;
+
+if (!API_KEY) {
+    console.error("AIService: Gemini API key not found in environment variables");
+    console.warn("Please add one of the following to .env.local:");
+    console.warn("  VITE_GEMINI_API_KEY=your_key (recommended)");
+    console.warn("  VITE_API_KEY=your_key (alternative)");
+    console.warn("  VITE_GOOGLE_API_KEY=your_key (alternative)");
+    throw new Error("Gemini API key not set. Add VITE_GEMINI_API_KEY to .env.local");
+}
+
+/**
+ * Initialize Google Generative AI client
+ */
+const ai = new GoogleGenAI({ apiKey: API_KEY });
+
+// ==================== HELPER FUNCTIONS ====================
+
+/**
+ * Gets text content from a specific PDF page, using cache if available.
+ * @param {number} pageNum - The page number.
+ * @returns {Promise<{fullText: string, items: Array<any>}>}
+ */
+async function getPageText(pageNum: number): Promise<{ fullText: string, items: Array<any> }> {
+    const state = AppStateManager.getState();
+    if (state.pdfTextCache.has(pageNum)) {
+        return state.pdfTextCache.get(pageNum)!;
+    }
+    if (!state.pdfDoc) {
+        throw new Error('No PDF loaded');
+    }
+    try {
+        const page = await state.pdfDoc.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        let fullText = '';
+        const items: Array<any> = [];
+        textContent.items.forEach((item: any) => {
+            if (item.str) {
+                fullText += item.str + ' ';
+                items.push({ text: item.str, transform: item.transform });
+            }
+        });
+        const pageData = { fullText, items };
+        // Simple cache management
+        if (state.pdfTextCache.size >= state.maxCacheSize) {
+            const firstKey = state.pdfTextCache.keys().next().value;
+            if (firstKey) state.pdfTextCache.delete(firstKey);
+        }
+        state.pdfTextCache.set(pageNum, pageData);
+        return pageData;
+    } catch (error) {
+        console.error(`Error getting text from page ${pageNum}:`, error);
+        return { fullText: '', items: [] };
+    }
+}
+
+/**
+ * Gets all text from the loaded PDF document.
+ * @returns {Promise<string|null>} Full text of the document or null if no PDF is loaded.
+ */
+async function getAllPdfText(): Promise<string | null> {
+    const state = AppStateManager.getState();
+    if (!state.pdfDoc) {
+        StatusManager.show("Please load a PDF first.", "warning");
+        return null;
+    }
+
+    let fullText = "";
+    StatusManager.show("Reading full document text...", "info", 60000); // Long timeout
+    for (let i = 1; i <= state.totalPages; i++) {
+        const pageData = await getPageText(i); // getPageText is already defined and caches
+        fullText += pageData.fullText + "\n\n";
+    }
+    StatusManager.show("Document text reading complete.", "success");
+    return fullText;
+}
+
+/**
+ * Calls the Gemini API with Google Search grounding.
+ * @param {string} systemInstruction - The system instruction.
+ * @param {string} userPrompt - The user query.
+ * @param {object} responseSchema - The JSON schema for the response.
+ * @returns {Promise<string>} - The text content from the API response.
+ */
+async function callGeminiWithSearch(systemInstruction: string, userPrompt: string, responseSchema: any): Promise<string> {
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: [{ parts: [{ text: userPrompt }] }],
+            config: {
+                systemInstruction,
+                tools: [{googleSearch: {}}],
+                responseMimeType: "application/json",
+                responseSchema
+            }
+        });
+        return response.text;
+    } catch (error) {
+        console.error("Gemini Search API call failed:", error);
+        throw error;
+    }
+}
+
+/**
+ * Converts a Blob to base64 string
+ * @param {Blob} blob - The blob to convert
+ * @returns {Promise<string>} - Base64 encoded string
+ */
+function blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            resolve((reader.result as string).split(',')[1]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
+// ==================== AI EXTRACTION FUNCTIONS ====================
+
+/**
+ * ✨ Generates PICO-T summary using Gemini API.
+ * Model: gemini-2.5-flash
+ */
+async function generatePICO(): Promise<void> {
+    const state = AppStateManager.getState();
+    if (!state.pdfDoc) {
+        StatusManager.show('Please load a PDF first.', 'warning');
+        return;
+    }
+    if (state.isProcessing) {
+        StatusManager.show('Please wait for the current operation to finish.', 'warning');
+        return;
+    }
+
+    AppStateManager.setState({ isProcessing: true });
+    const loadingEl = document.getElementById('pico-loading');
+    if (loadingEl) loadingEl.style.display = 'block';
+    StatusManager.show('✨ Analyzing document for PICO-T summary...', 'info');
+
+    try {
+        // Get full text of the document to provide as context
+        const documentText = await getAllPdfText();
+        if (!documentText) {
+            throw new Error("Could not read text from the PDF.");
+        }
+
+        const systemPrompt = "You are an expert clinical research assistant. Your task is to extract PICO-T information from the provided clinical study text and return it as a JSON object. Be concise and accurate. If information is not found, return an empty string for that field.";
+        const userPrompt = `Here is the clinical study text:\n\n${documentText}`;
+
+        const picoSchema = {
+            type: Type.OBJECT,
+            properties: {
+                "population": { "type": Type.STRING, "description": "The study population (e.g., '57 patients with malignant cerebellar infarction')" },
+                "intervention": { "type": Type.STRING, "description": "The intervention performed (e.g., 'suboccipital decompressive craniectomy (SDC)')" },
+                "comparator": { "type": Type.STRING, "description": "The comparison group (e.g., 'best medical treatment alone' or 'no comparator')" },
+                "outcomes": { "type": Type.STRING, "description": "The primary outcomes measured (e.g., 'mRS at 12-month follow-up')" },
+                "timing": { "type": Type.STRING, "description": "The follow-up timing (e.g., '12-month follow-up')" },
+                "studyType": { "type": Type.STRING, "description": "The type of study (e.g., 'retrospective-matched case-control study')" }
+            }
+        };
+
+        // Call Gemini directly
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [{ parts: [{ text: userPrompt }] }],
+            config: {
+                systemInstruction: systemPrompt,
+                responseMimeType: "application/json",
+                responseSchema: picoSchema
+            }
+        });
+
+        const jsonText = response.text;
+        const data = JSON.parse(jsonText);
+
+        // Populate fields
+        const populationField = document.getElementById('eligibility-population') as HTMLInputElement;
+        const interventionField = document.getElementById('eligibility-intervention') as HTMLInputElement;
+        const comparatorField = document.getElementById('eligibility-comparator') as HTMLInputElement;
+        const outcomesField = document.getElementById('eligibility-outcomes') as HTMLInputElement;
+        const timingField = document.getElementById('eligibility-timing') as HTMLInputElement;
+        const typeField = document.getElementById('eligibility-type') as HTMLInputElement;
+
+        if (populationField) populationField.value = data.population || '';
+        if (interventionField) interventionField.value = data.intervention || '';
+        if (comparatorField) comparatorField.value = data.comparator || '';
+        if (outcomesField) outcomesField.value = data.outcomes || '';
+        if (timingField) timingField.value = data.timing || '';
+        if (typeField) typeField.value = data.studyType || '';
+
+        // Add to trace log
+        const state2 = AppStateManager.getState();
+        const coords = { x: 0, y: 0, width: 0, height: 0 }; // AI extractions have no coords
+        ExtractionTracker.addExtraction({ fieldName: 'population (AI)', text: data.population, page: 0, coordinates: coords, method: 'gemini-pico', documentName: state2.documentName });
+        ExtractionTracker.addExtraction({ fieldName: 'intervention (AI)', text: data.intervention, page: 0, coordinates: coords, method: 'gemini-pico', documentName: state2.documentName });
+        ExtractionTracker.addExtraction({ fieldName: 'comparator (AI)', text: data.comparator, page: 0, coordinates: coords, method: 'gemini-pico', documentName: state2.documentName });
+        ExtractionTracker.addExtraction({ fieldName: 'outcomes (AI)', text: data.outcomes, page: 0, coordinates: coords, method: 'gemini-pico', documentName: state2.documentName });
+        ExtractionTracker.addExtraction({ fieldName: 'timing (AI)', text: data.timing, page: 0, coordinates: coords, method: 'gemini-pico', documentName: state2.documentName });
+        ExtractionTracker.addExtraction({ fieldName: 'studyType (AI)', text: data.studyType, page: 0, coordinates: coords, method: 'gemini-pico', documentName: state2.documentName });
+
+        StatusManager.show('✨ PICO-T fields auto-populated by Gemini!', 'success');
+
+    } catch (error: any) {
+        console.error("Gemini PICO-T Error:", error);
+        StatusManager.show(`AI extraction failed: ${error.message}`, 'error');
+    } finally {
+        AppStateManager.setState({ isProcessing: false });
+        const loadingEl = document.getElementById('pico-loading');
+        if (loadingEl) loadingEl.style.display = 'none';
+    }
+}
+
+/**
+ * ✨ Generates a summary of key findings using Gemini API.
+ * Model: gemini-flash-latest
+ */
+async function generateSummary(): Promise<void> {
+    const state = AppStateManager.getState();
+    if (!state.pdfDoc) {
+        StatusManager.show('Please load a PDF first.', 'warning');
+        return;
+    }
+    if (state.isProcessing) {
+        StatusManager.show('Please wait for the current operation to finish.', 'warning');
+        return;
+    }
+
+    AppStateManager.setState({ isProcessing: true });
+    const loadingEl = document.getElementById('summary-loading');
+    if (loadingEl) loadingEl.style.display = 'block';
+    StatusManager.show('✨ Asking Gemini for summary...', 'info');
+
+    try {
+        const documentText = await getAllPdfText();
+        if (!documentText) {
+            throw new Error("Could not read text from the PDF.");
+        }
+
+        const systemPrompt = "You are an expert clinical research assistant. Your task is to read the provided clinical study text and write a concise summary (2-3 paragraphs) focusing on the key findings, outcomes, and any identified predictors of those outcomes.";
+        const userPrompt = `Please summarize the following clinical study text:\n\n${documentText}`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-flash-latest',
+            contents: [{ parts: [{ text: userPrompt }] }],
+            config: {
+                systemInstruction: systemPrompt,
+            }
+        });
+
+        const summaryText = response.text;
+
+        const summaryField = document.getElementById('predictorsPoorOutcomeSurgical') as HTMLTextAreaElement;
+        if (summaryField) summaryField.value = summaryText;
+
+        // Add to trace log
+        const state2 = AppStateManager.getState();
+        ExtractionTracker.addExtraction({
+            fieldName: 'summary (AI)',
+            text: summaryText,
+            page: 0,
+            coordinates: {x:0, y:0, width:0, height:0},
+            method: 'gemini-summary',
+            documentName: state2.documentName
+        });
+
+        StatusManager.show('✨ Key findings summary generated by Gemini!', 'success');
+
+    } catch (error: any) {
+        console.error("Gemini Summary Error:", error);
+        StatusManager.show(`AI summary failed: ${error.message}`, 'error');
+    } finally {
+        AppStateManager.setState({ isProcessing: false });
+        const loadingEl = document.getElementById('summary-loading');
+        if (loadingEl) loadingEl.style.display = 'none';
+    }
+}
+
+/**
+ * ✨ Validates a field's content against the PDF text using Gemini.
+ * Model: gemini-2.5-pro
+ */
+async function validateFieldWithAI(fieldId: string): Promise<void> {
+    const state = AppStateManager.getState();
+    const field = document.getElementById(fieldId) as HTMLInputElement;
+    if (!field) {
+        StatusManager.show(`Field ${fieldId} not found.`, 'error');
+        return;
+    }
+
+    const claim = field.value;
+    if (!claim) {
+        StatusManager.show('Field is empty, nothing to validate.', 'warning');
+        return;
+    }
+
+    if (!state.pdfDoc) {
+        StatusManager.show('Please load a PDF first.', 'warning');
+        return;
+    }
+    if (state.isProcessing) {
+        StatusManager.show('Please wait for the current operation to finish.', 'warning');
+        return;
+    }
+
+    AppStateManager.setState({ isProcessing: true });
+    StatusManager.showLoading(true);
+    StatusManager.show(`✨ Validating claim with Gemini: "${claim.substring(0, 30)}..."`, 'info');
+
+    try {
+        const documentText = await getAllPdfText();
+        if (!documentText) {
+            throw new Error("Could not read text from PDF for validation.");
+        }
+
+        const systemPrompt = `You are a fact-checking expert specializing in clinical research papers. Your task is to determine if a given "claim" is directly supported by the provided "document text". You must respond with a JSON object.`;
+        const userPrompt = `DOCUMENT TEXT:\n"""${documentText}"""\n\nCLAIM:\n"""${claim}"""\n\nBased on the document text, is the claim supported? Provide a direct quote if it is.`;
+
+        const validationSchema = {
+            type: Type.OBJECT,
+            properties: {
+                "is_supported": {
+                    type: Type.BOOLEAN,
+                    description: "True if the claim is directly supported by the text, otherwise false."
+                },
+                "supporting_quote": {
+                    type: Type.STRING,
+                    description: "A direct quote from the document that supports the claim. If not supported, this should be an empty string or a brief explanation."
+                },
+                "confidence_score": {
+                    type: Type.NUMBER,
+                    description: "Your confidence in the validation from 0.0 to 1.0."
+                }
+            },
+            required: ["is_supported", "supporting_quote", "confidence_score"]
+        };
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: [{ parts: [{ text: userPrompt }] }],
+            config: {
+                systemInstruction: systemPrompt,
+                responseMimeType: "application/json",
+                responseSchema: validationSchema
+            }
+        });
+
+        const jsonText = response.text;
+        const validation = JSON.parse(jsonText);
+
+        if (validation.is_supported) {
+            StatusManager.show(`✓ VALIDATED (Confidence: ${Math.round(validation.confidence_score * 100)}%): "${validation.supporting_quote}"`, 'success', 10000);
+            field.style.borderColor = 'var(--success-green)';
+        } else {
+            StatusManager.show(`✗ NOT SUPPORTED (Confidence: ${Math.round(validation.confidence_score * 100)}%). Reason: "${validation.supporting_quote}"`, 'warning', 10000);
+            field.style.borderColor = 'var(--warning-orange)';
+        }
+
+    } catch (error: any) {
+        console.error("Gemini Validation Error:", error);
+        StatusManager.show(`AI validation failed: ${error.message}`, 'error');
+    } finally {
+        AppStateManager.setState({ isProcessing: false });
+        StatusManager.showLoading(false);
+    }
+}
+
+/**
+ * ✨ Finds study metadata using Gemini with Google Search.
+ * Model: gemini-2.5-flash + Google Search
+ */
+async function findMetadata(): Promise<void> {
+    const state = AppStateManager.getState();
+    if (state.isProcessing) {
+        StatusManager.show('Please wait for the current operation to finish.', 'warning');
+        return;
+    }
+    const citationField = document.getElementById('citation') as HTMLInputElement;
+    const citationText = citationField?.value || '';
+    if (!citationText) {
+        StatusManager.show('Please enter a citation or title first.', 'warning');
+        return;
+    }
+
+    AppStateManager.setState({ isProcessing: true });
+    const loadingEl = document.getElementById('metadata-loading');
+    if (loadingEl) loadingEl.style.display = 'block';
+    StatusManager.show('✨ Searching Google for metadata...', 'info');
+
+    try {
+        const systemPrompt = "You are a research assistant. Find the metadata for the given study. Use Google Search to find the information. If a value isn't found, return an empty string for it. Provide only the JSON response.";
+        const userPrompt = `Find the DOI, PMID, journal name, and publication year for the following study: "${citationText}"`;
+
+        const metadataSchema = {
+            type: Type.OBJECT,
+            properties: {
+                "doi": { "type": Type.STRING, "description": "The DOI of the paper" },
+                "pmid": { "type": Type.STRING, "description": "The PubMed ID (PMID) of the paper" },
+                "journal": { "type": Type.STRING, "description": "The name of the journal" },
+                "year": { "type": Type.STRING, "description": "The 4-digit publication year" }
+            }
+        };
+
+        const responseJson = await callGeminiWithSearch(systemPrompt, userPrompt, metadataSchema);
+        const data = JSON.parse(responseJson);
+
+        const doiField = document.getElementById('doi') as HTMLInputElement;
+        const pmidField = document.getElementById('pmid') as HTMLInputElement;
+        const journalField = document.getElementById('journal') as HTMLInputElement;
+        const yearField = document.getElementById('year') as HTMLInputElement;
+
+        if (data.doi && doiField) doiField.value = data.doi;
+        if (data.pmid && pmidField) pmidField.value = data.pmid;
+        if (data.journal && journalField) journalField.value = data.journal;
+        if (data.year && yearField) yearField.value = data.year;
+
+        StatusManager.show('✨ Metadata auto-populated!', 'success');
+
+    } catch (error: any) {
+        console.error("Gemini Metadata Error:", error);
+        StatusManager.show(`AI metadata search failed: ${error.message}`, 'error');
+    } finally {
+        AppStateManager.setState({ isProcessing: false });
+        const loadingEl = document.getElementById('metadata-loading');
+        if (loadingEl) loadingEl.style.display = 'none';
+    }
+}
+
+/**
+ * ✨ Extracts tables from the document using Gemini Pro.
+ * Model: gemini-2.5-pro
+ */
+async function handleExtractTables(): Promise<void> {
+    const state = AppStateManager.getState();
+    const resultsContainer = document.getElementById('table-extraction-results');
+    if (!state.pdfDoc) {
+        StatusManager.show("Please load a PDF first.", "warning");
+        return;
+    }
+
+    if (resultsContainer) resultsContainer.innerHTML = 'Extracting tables from document... ✨';
+    StatusManager.showLoading(true);
+
+    try {
+        const documentText = await getAllPdfText();
+        if (!documentText) return;
+
+        const systemPrompt = `You are a data extraction specialist. Analyze the provided text from a clinical research paper. Identify all tables and extract their content. Structure the output as a JSON object. The object should have a single key 'tables' which is an array. Each object in the array should represent one table and have 'title' (the table's caption or title), 'description' (a brief summary of the table's content), and 'data' (a 2D array of strings representing rows and columns, including headers). If no tables are found, return an empty array for the 'tables' key.`;
+
+        const tableSchema = {
+            type: Type.OBJECT,
+            properties: {
+                tables: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            title: { type: Type.STRING },
+                            description: { type: Type.STRING },
+                            data: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.ARRAY,
+                                    items: { type: Type.STRING }
+                                }
+                            }
+                        },
+                        required: ["title", "data"]
+                    }
+                }
+            }
+        };
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: documentText,
+            config: {
+                systemInstruction: systemPrompt,
+                responseMimeType: "application/json",
+                responseSchema: tableSchema
+            }
+        });
+
+        const jsonText = response.text;
+        const result = JSON.parse(jsonText);
+
+        if (result.tables && result.tables.length > 0 && resultsContainer) {
+            renderTables(result.tables, resultsContainer);
+            StatusManager.show(`Successfully extracted ${result.tables.length} tables.`, 'success');
+        } else {
+            if (resultsContainer) resultsContainer.innerText = "No tables found in the document.";
+            StatusManager.show("No tables were identified by the AI.", "info");
+        }
+
+    } catch (error: any) {
+        console.error("Table Extraction Error:", error);
+        if (resultsContainer) resultsContainer.innerText = `Error: ${error.message}`;
+        StatusManager.show("Table extraction failed.", "error");
+    } finally {
+        StatusManager.showLoading(false);
+    }
+}
+
+/**
+ * Renders extracted tables in the UI
+ * @param {Array} tables - Array of table objects
+ * @param {HTMLElement} container - Container element to render tables into
+ */
+function renderTables(tables: any[], container: HTMLElement): void {
+    container.innerHTML = '';
+    tables.forEach((tableData, index) => {
+        const details = document.createElement('details');
+        details.open = true; // Open by default
+
+        const summary = document.createElement('summary');
+        summary.textContent = `Table ${index + 1}: ${tableData.title || 'Untitled'}`;
+
+        const description = document.createElement('p');
+        description.textContent = tableData.description || '';
+        description.style.fontSize = '11px';
+        description.style.fontStyle = 'italic';
+
+        const table = document.createElement('table');
+        const thead = document.createElement('thead');
+        const tbody = document.createElement('tbody');
+
+        if (tableData.data && tableData.data.length > 0) {
+            // Assume first row is header
+            const headerRow = document.createElement('tr');
+            tableData.data[0].forEach((headerText: string) => {
+                const th = document.createElement('th');
+                th.textContent = headerText;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+
+            // The rest are body rows
+            for (let i = 1; i < tableData.data.length; i++) {
+                const bodyRow = document.createElement('tr');
+                tableData.data[i].forEach((cellText: string) => {
+                    const td = document.createElement('td');
+                    td.textContent = cellText;
+                    bodyRow.appendChild(td);
+                });
+                tbody.appendChild(bodyRow);
+            }
+        }
+
+        table.appendChild(thead);
+        table.appendChild(tbody);
+
+        details.appendChild(summary);
+        if(tableData.description) details.appendChild(description);
+        details.appendChild(table);
+
+        container.appendChild(details);
+    });
+}
+
+/**
+ * ✨ Analyzes an uploaded image with a text prompt using Gemini Flash.
+ * Model: gemini-2.5-flash
+ */
+async function handleImageAnalysis(): Promise<void> {
+    const fileInput = document.getElementById('image-upload-input') as HTMLInputElement;
+    const promptField = document.getElementById('image-analysis-prompt') as HTMLInputElement;
+    const resultsContainer = document.getElementById('image-analysis-results');
+    const prompt = promptField?.value || '';
+
+    if (!fileInput?.files || fileInput.files.length === 0) {
+        StatusManager.show("Please upload an image.", "warning");
+        return;
+    }
+    if (!prompt) {
+        StatusManager.show("Please enter a prompt for image analysis.", "warning");
+        return;
+    }
+
+    const file = fileInput.files[0];
+    if (resultsContainer) resultsContainer.innerHTML = 'Analyzing image... ✨';
+    StatusManager.showLoading(true);
+
+    try {
+        const base64Data = await blobToBase64(file);
+        const imagePart = {
+            inlineData: {
+                mimeType: file.type,
+                data: base64Data,
+            },
+        };
+        const textPart = {
+            text: prompt
+        };
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: [imagePart, textPart] },
+        });
+
+        if (resultsContainer) resultsContainer.innerText = response.text;
+
+    } catch (error: any) {
+        console.error("Image Analysis Error:", error);
+        if (resultsContainer) resultsContainer.innerText = `Error: ${error.message}`;
+        StatusManager.show("Image analysis failed.", "error");
+    } finally {
+        StatusManager.showLoading(false);
+    }
+}
+
+/**
+ * ✨ Performs deep analysis on the document text using Gemini Pro with thinking budget.
+ * Model: gemini-2.5-pro (with 32768 thinking budget)
+ */
+async function handleDeepAnalysis(): Promise<void> {
+    const state = AppStateManager.getState();
+    const promptField = document.getElementById('deep-analysis-prompt') as HTMLInputElement;
+    const resultsContainer = document.getElementById('deep-analysis-results');
+    const prompt = promptField?.value || '';
+
+    if (!prompt) {
+        StatusManager.show("Please enter a prompt for deep analysis.", "warning");
+        return;
+    }
+    if (!state.pdfDoc) {
+        StatusManager.show("Please load a PDF first.", "warning");
+        return;
+    }
+
+    if (resultsContainer) resultsContainer.innerHTML = 'Thinking deeply... ✨';
+    StatusManager.showLoading(true);
+
+    try {
+        const documentText = await getAllPdfText();
+        if (!documentText) return;
+
+        const fullPrompt = `Based on the following document text, please answer this question: ${prompt}\n\nDOCUMENT TEXT:\n${documentText}`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: fullPrompt,
+            config: {
+                thinkingConfig: { thinkingBudget: 32768 }
+            }
+        });
+
+        if (resultsContainer) resultsContainer.innerText = response.text;
+
+    } catch (error: any) {
+        console.error("Deep Analysis Error:", error);
+        if (resultsContainer) resultsContainer.innerText = `Error: ${error.message}`;
+        StatusManager.show("Deep analysis failed.", "error");
+    } finally {
+        StatusManager.showLoading(false);
+    }
+}
+
+// ==================== EXPORTS ====================
+
+/**
+ * AIService object - Central manager for all AI operations
+ */
+const AIService = {
+    generatePICO,
+    generateSummary,
+    validateFieldWithAI,
+    findMetadata,
+    handleExtractTables,
+    handleImageAnalysis,
+    handleDeepAnalysis,
+    // Helper functions (exported for potential internal use)
+    getPageText,
+    getAllPdfText,
+    callGeminiWithSearch,
+};
+
+export default AIService;
+
+// Export individual functions for window binding
+export {
+    generatePICO,
+    generateSummary,
+    validateFieldWithAI,
+    findMetadata,
+    handleExtractTables,
+    handleImageAnalysis,
+    handleDeepAnalysis,
+};
