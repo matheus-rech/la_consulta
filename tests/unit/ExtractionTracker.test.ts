@@ -24,7 +24,8 @@ describe('ExtractionTracker', () => {
       pdfRenderer: {},
     });
 
-    localStorage.clear();
+    // Clear all mocks
+    jest.clearAllMocks();
   });
 
   describe('addExtraction', () => {
@@ -104,8 +105,9 @@ describe('ExtractionTracker', () => {
   });
 
   describe('persistence', () => {
-    it('should save extractions successfully', () => {
-      // Add an extraction first
+    it('should save to localStorage when an extraction is added', () => {
+      const setItemSpy = jest.spyOn(Storage.prototype, 'setItem');
+      
       const extraction: Extraction = {
         id: 'ext_test',
         timestamp: new Date().toISOString(),
@@ -117,11 +119,37 @@ describe('ExtractionTracker', () => {
         documentName: 'test.pdf',
       };
       
-      const result = ExtractionTracker.addExtraction(extraction);
+      ExtractionTracker.addExtraction(extraction);
 
-      // Verify extraction was added
-      expect(result).not.toBeNull();
-      expect(result?.fieldName).toBe('test');
+      expect(setItemSpy).toHaveBeenCalledWith(
+        'clinical_extractions_simple',
+        expect.stringContaining('"fieldName":"test"')
+      );
+      
+      setItemSpy.mockRestore();
+    });
+
+    it('should load extractions from localStorage', () => {
+      const savedExtractions = [{
+        id: 'ext_saved',
+        timestamp: new Date().toISOString(),
+        fieldName: 'saved_field',
+        text: 'saved text',
+        page: 1,
+        coordinates: { left: 0, top: 0, width: 10, height: 10 },
+        method: 'manual',
+        documentName: 'test.pdf',
+      }];
+      
+      const getItemSpy = jest.spyOn(Storage.prototype, 'getItem').mockReturnValue(JSON.stringify(savedExtractions));
+
+      ExtractionTracker.loadFromStorage();
+
+      expect(mockAppStateManager.setState).toHaveBeenCalledWith({
+        extractions: savedExtractions
+      });
+      
+      getItemSpy.mockRestore();
     });
   });
 });
