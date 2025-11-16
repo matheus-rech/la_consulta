@@ -59,7 +59,7 @@ interface QueuedRequest {
 }
 
 /**
- * Simple LRU cache for responses
+ * Simple FIFO cache for responses
  */
 class ResponseCache {
     private cache = new Map<string, CacheEntry>();
