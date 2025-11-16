@@ -12,10 +12,6 @@ import type { TextItem, Coordinates, Extraction } from './index';
 
 declare global {
   interface Window {
-    /** Callback when Google API client loads */
-    gapiLoaded: () => void;
-    /** Callback when Google Identity Services loads */
-    gisLoaded: () => void;
     /** PDF.js library object */
     pdfjsLib: {
       GlobalWorkerOptions: {
@@ -25,10 +21,6 @@ declare global {
         promise: Promise<any>;
       };
     };
-    /** Google API object */
-    google: any;
-    /** Google API client */
-    gapi: any;
     /** Memory manager for cleanup */
     MemoryManager: {
       listeners: Array<{ el: Window | HTMLElement | Document; type: string; handler: EventListenerOrEventListenerObject }>;
@@ -91,8 +83,6 @@ declare global {
     handleImageAnalysis: () => Promise<void>;
     /** Perform deep analysis with AI */
     handleDeepAnalysis: () => Promise<void>;
-    /** Submit data to Google Sheets */
-    handleSubmitToGoogleSheets: (e: Event) => Promise<void>;
     /** Extract figures from PDF using operator interception */
     extractFiguresFromPDF: () => Promise<void>;
     /** Extract tables from PDF using geometric detection */
