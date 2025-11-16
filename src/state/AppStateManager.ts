@@ -253,7 +253,9 @@ class AppStateManagerClass {
    * @internal
    */
   __resetForTesting(): void {
-    this.reset(false);
+    this.reset(false); // false = clear subscribers
+    // Explicitly clear subscribers to ensure test isolation
+    this.subscribers = new Set();
   }
 }
 
