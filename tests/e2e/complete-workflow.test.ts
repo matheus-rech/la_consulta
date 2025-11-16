@@ -20,7 +20,6 @@ import FormManager, { setDependencies as setFormManagerDependencies } from '../.
 import StatusManager from '../../src/utils/status';
 
 describe('Complete User Workflow E2E Test', () => {
-  const TEST_PDF_PATH = '/public/Kim2016.pdf';
   
   beforeAll(() => {
     document.body.innerHTML = `

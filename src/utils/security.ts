@@ -28,8 +28,8 @@ const SecurityUtils = {
    * @returns True if extraction is valid
    */
   validateExtraction: (extraction: any): extraction is Extraction => {
-    // Simplified validation
-    return (
+    // Simplified validation - returns boolean
+    return !!(
       extraction &&
       extraction.fieldName &&
       extraction.text &&
