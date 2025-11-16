@@ -85,13 +85,36 @@ function calculateSimilarity(str1: string, str2: string): number {
 /**
  * Calculate TF-IDF score for a term in a document
  */
-function calculateTFIDF(term: string, document: string, allDocuments: string[]): number {
+/**
+ * Build an inverted index mapping terms to document indices
+ */
+function buildInvertedIndex(allDocuments: string[]): Map<string, Set<number>> {
+    const invertedIndex = new Map<string, Set<number>>();
+    allDocuments.forEach((text, idx) => {
+        const words = text.toLowerCase().split(/\s+/);
+        words.forEach(word => {
+            if (!invertedIndex.has(word)) {
+                invertedIndex.set(word, new Set());
+            }
+            invertedIndex.get(word)!.add(idx);
+        });
+    });
+    return invertedIndex;
+}
+
+/**
+ * Calculate TF-IDF score for a term in a document using an inverted index
+ */
+function calculateTFIDF(
+    term: string,
+    document: string,
+    allDocuments: string[],
+    invertedIndex: Map<string, Set<number>>
+): number {
     const termCount = (document.toLowerCase().match(new RegExp(term.toLowerCase(), 'g')) || []).length;
     const tf = termCount / document.split(/\s+/).length;
 
-    const docsWithTerm = allDocuments.filter(doc => 
-        doc.toLowerCase().includes(term.toLowerCase())
-    ).length;
+    const docsWithTerm = invertedIndex.get(term.toLowerCase())?.size || 0;
     const idf = Math.log(allDocuments.length / (docsWithTerm + 1));
 
     return tf * idf;
