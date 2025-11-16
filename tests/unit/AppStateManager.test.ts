@@ -2,10 +2,29 @@ import AppStateManager from '../../src/state/AppStateManager';
 
 describe('AppStateManager', () => {
   beforeEach(() => {
-    // Reset state using public API
-    AppStateManager.__resetForTesting();
-    // Set scale to 1.5 for tests that depend on it
-    AppStateManager.setState({ scale: 1.5 });
+    // Reset to a clean state using the public API
+    AppStateManager.setState({
+      pdfDoc: null,
+      currentPage: 1,
+      totalPages: 0,
+      scale: 1.5,
+      documentName: '',
+      activeField: null,
+      activeFieldElement: null,
+      currentStep: 0,
+      totalSteps: 8,
+      isProcessing: false,
+      extractions: [],
+      searchMarkers: [],
+      pdfTextCache: new Map(),
+      markdownContent: '',
+      markdownLoaded: false,
+      textChunks: [],
+      citationMap: new Map(),
+      activeCitationIndex: null,
+      extractedFigures: [],
+      extractedTables: [],
+    });
   });
 
   describe('getState', () => {

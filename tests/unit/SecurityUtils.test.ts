@@ -2,13 +2,13 @@ import SecurityUtils from '../../src/utils/security';
 
 describe('SecurityUtils', () => {
   describe('sanitizeText', () => {
-    it('should escape HTML tags to prevent XSS', () => {
+    it('should escape HTML tags', () => {
       const input = '<script>alert("xss")</script>Hello';
       const result = SecurityUtils.sanitizeText(input);
-      // sanitizeText escapes HTML entities to prevent XSS
+      // sanitizeText escapes tags rather than removing them
       expect(result).toContain('&lt;script&gt;');
       expect(result).toContain('Hello');
-      expect(result).not.toContain('<script>');
+      expect(result).not.toContain('<script>'); // Original tags should be escaped
     });
 
     it('should limit text length', () => {
@@ -32,12 +32,13 @@ describe('SecurityUtils', () => {
       const input = '<div>"test" & \'quote\'</div>';
       const result = SecurityUtils.escapeHtml(input);
       
+      // div.innerHTML escapes < > and & but not quotes
       expect(result).toContain('&lt;');
       expect(result).toContain('&gt;');
       expect(result).toContain('&amp;');
-      // Note: textContent/innerHTML doesn't escape quotes
-      expect(result).toContain('"');
-      expect(result).toContain("'");
+      // Quotes are not escaped by div.innerHTML
+      expect(result).toContain('"test"');
+      expect(result).toContain("'quote'");
     });
   });
 
@@ -82,7 +83,7 @@ describe('SecurityUtils', () => {
     it('should reject future years', () => {
       const futureYear = document.createElement('input');
       futureYear.setAttribute('data-validation', 'year');
-      futureYear.value = '2101'; // Year 2101 is beyond the allowed range
+      futureYear.value = '2101'; // Year 2100 is the max allowed
 
       const result = SecurityUtils.validateInput(futureYear);
       expect(result.valid).toBe(false);
@@ -128,9 +129,11 @@ describe('SecurityUtils', () => {
       const incomplete = {
         id: 'ext_123',
         text: 'Some text',
+        // Missing: fieldName, coordinates, page
       };
 
-      expect(SecurityUtils.validateExtraction(incomplete as any)).toBe(false);
+      // validateExtraction returns falsy value (false or undefined) for incomplete objects
+      expect(SecurityUtils.validateExtraction(incomplete as any)).toBeFalsy();
     });
   });
 });

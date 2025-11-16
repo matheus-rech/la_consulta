@@ -152,7 +152,7 @@ const PDFLoader = {
     StatusManager.showLoading(true);
 
     try {
-      // Cleanup previous PDF rendering to prevent memory leaks
+      // Clean up previous PDF resources before loading new one
       PDFRenderer.cleanup();
 
       // Convert file to ArrayBuffer for PDF.js
