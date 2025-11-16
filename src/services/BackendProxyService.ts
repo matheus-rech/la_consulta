@@ -59,7 +59,7 @@ interface QueuedRequest<T = any> {
 }
 
 /**
- * Simple FIFO cache for responses
+ * Simple cache with FIFO eviction for responses
  */
 class ResponseCache {
     private cache = new Map<string, CacheEntry>();
