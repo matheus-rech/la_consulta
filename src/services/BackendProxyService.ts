@@ -51,15 +51,15 @@ interface CacheEntry {
     ttl: number;
 }
 
-interface QueuedRequest {
+interface QueuedRequest<T = any> {
     request: ProxyRequest;
-    resolve: (value: ProxyResponse) => void;
+    resolve: (value: ProxyResponse<T>) => void;
     reject: (error: Error) => void;
     timestamp: number;
 }
 
 /**
- * Simple LRU cache for responses
+ * Simple FIFO cache for responses
  */
 class ResponseCache {
     private cache = new Map<string, CacheEntry>();

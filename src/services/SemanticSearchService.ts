@@ -230,14 +230,18 @@ export const SemanticSearchService = {
 
                 if (term.split(/\s+/).length === 1 && exactMatches.length === 0) {
                     const words = chunk.text.split(/\s+/);
+                    let offset = 0;
                     for (let i = 0; i < words.length; i++) {
-                        const word = words[i].replace(/[^\w]/g, '');
+                        const rawWord = words[i];
+                        const word = rawWord.replace(/[^\w]/g, '');
                         const similarity = calculateSimilarity(term, word);
                         
-                        if (similarity >= fuzzyThreshold && similarity < 1.0) {
-                            const wordStart = chunk.text.indexOf(words[i]);
-                            const wordEnd = wordStart + words[i].length;
-                            
+                        // Find the position of this word instance starting from offset
+                        const wordStart = chunk.text.indexOf(rawWord, offset);
+                        const wordEnd = wordStart + rawWord.length;
+                        offset = wordEnd + 1; // Move offset past this word and the following space
+
+                        if (similarity >= fuzzyThreshold && wordStart !== -1) {
                             const score = similarity * 5;
                             if (score > bestScore) {
                                 bestScore = score;
