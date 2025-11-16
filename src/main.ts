@@ -158,27 +158,19 @@ async function searchInPDF() {
  * Set up all event listeners for the application
  */
 function setupEventListeners() {
-    // PDF Upload
+    // PDF Upload - Unified to single input
     const pdfUploadBtn = document.getElementById('pdf-upload-btn');
     const pdfFile = document.getElementById('pdf-file') as HTMLInputElement;
-    const pdfFile2 = document.getElementById('pdf-file-2') as HTMLInputElement;
 
     if (pdfUploadBtn && pdfFile) {
-        pdfUploadBtn.onclick = () => pdfFile.click();
+        pdfUploadBtn.addEventListener('click', () => pdfFile.click());
     }
 
     if (pdfFile) {
-        pdfFile.onchange = (e) => {
+        pdfFile.addEventListener('change', (e) => {
             const file = (e.target as HTMLInputElement).files?.[0];
             if (file) PDFLoader.loadPDF(file);
-        };
-    }
-
-    if (pdfFile2) {
-        pdfFile2.onchange = (e) => {
-            const file = (e.target as HTMLInputElement).files?.[0];
-            if (file) PDFLoader.loadPDF(file);
-        };
+        });
     }
 
     // PDF Navigation
@@ -257,19 +249,26 @@ function setupEventListeners() {
 
     // Drag and Drop for Upload Area
     const uploadArea = document.getElementById('upload-area');
-    if (uploadArea) {
-        uploadArea.onclick = () => pdfFile2?.click();
+    if (uploadArea && pdfFile) {
+        uploadArea.addEventListener('click', () => pdfFile.click());
 
-        uploadArea.ondragover = (e) => {
+        uploadArea.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                pdfFile.click();
+            }
+        });
+
+        uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
             uploadArea.style.background = '#e3f2fd';
-        };
+        });
 
-        uploadArea.ondragleave = () => {
+        uploadArea.addEventListener('dragleave', () => {
             uploadArea.style.background = '';
-        };
+        });
 
-        uploadArea.ondrop = (e) => {
+        uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
             uploadArea.style.background = '';
             const file = e.dataTransfer?.files[0];
@@ -278,7 +277,7 @@ function setupEventListeners() {
             } else {
                 StatusManager.show('Please drop a valid PDF file', 'warning');
             }
-        };
+        });
     }
 
     // Image Upload for Analysis
@@ -303,17 +302,57 @@ function setupEventListeners() {
         });
     }
 
+    // Export Buttons - Explicit bindings for reliability
+    const exportExcelBtn = document.getElementById('export-excel-btn');
+    const exportJsonBtn = document.getElementById('export-json-btn');
+    const exportCsvBtn = document.getElementById('export-csv-btn');
+    const exportAuditBtn = document.getElementById('export-audit-btn');
+    const exportPdfBtn = document.getElementById('export-pdf-btn');
+
+    if (exportExcelBtn) {
+        exportExcelBtn.addEventListener('click', () => {
+            if (window.ClinicalExtractor?.exportExcel) {
+                window.ClinicalExtractor.exportExcel();
+            }
+        });
+    }
+
+    if (exportJsonBtn) {
+        exportJsonBtn.addEventListener('click', () => {
+            if (window.ClinicalExtractor?.exportJSON) {
+                window.ClinicalExtractor.exportJSON();
+            }
+        });
+    }
+
+    if (exportCsvBtn) {
+        exportCsvBtn.addEventListener('click', () => {
+            if (window.ClinicalExtractor?.exportCSV) {
+                window.ClinicalExtractor.exportCSV();
+            }
+        });
+    }
+
+    if (exportAuditBtn) {
+        exportAuditBtn.addEventListener('click', () => {
+            if (window.ClinicalExtractor?.exportAudit) {
+                window.ClinicalExtractor.exportAudit();
+            }
+        });
+    }
+
+    if (exportPdfBtn) {
+        exportPdfBtn.addEventListener('click', () => {
+            if (window.ClinicalExtractor?.exportAnnotatedPDF) {
+                window.ClinicalExtractor.exportAnnotatedPDF();
+            }
+        });
+    }
+
     // Memory Management
     MemoryManager.registerEventListener(window, 'beforeunload', () => {
         MemoryManager.cleanup();
     });
-
-    // Register cleanup with MemoryManager (only if elements exist)
-    if (pdfUploadBtn) MemoryManager.registerEventListener(pdfUploadBtn, 'click', pdfUploadBtn.onclick!);
-    if (prevPageBtn) MemoryManager.registerEventListener(prevPageBtn, 'click', prevPageBtn.onclick!);
-    if (nextPageBtn) MemoryManager.registerEventListener(nextPageBtn, 'click', nextPageBtn.onclick!);
-    if (zoomSelect) MemoryManager.registerEventListener(zoomSelect, 'change', zoomSelect.onchange!);
-    if (fitWidthBtn) MemoryManager.registerEventListener(fitWidthBtn, 'click', fitWidthBtn.onclick!);
 }
 
 // ==================== EXTRACTION HANDLERS ====================

@@ -1232,8 +1232,8 @@
         <!-- PDF Panel (Center) -->
         <div class="pdf-panel">
             <div class="pdf-toolbar">
-                <button id="pdf-upload-btn">📄 Load PDF</button>
-                <input type="file" id="pdf-file" accept=".pdf" aria-label="Upload PDF file">
+                <button type="button" id="pdf-upload-btn">📄 Load PDF</button>
+                <input type="file" id="pdf-file" accept=".pdf" style="display:none;" aria-label="Upload PDF file">
                 <button id="pdf-prev-page" aria-label="Previous Page">◄</button>
                 <span class="toolbar-text">
                     Page <input type="number" id="page-num" value="1" min="1" aria-label="Page number">
@@ -1277,10 +1277,9 @@
             <div id="pdf-container" class="pdf-container">
                 <div id="upload-area" class="upload-area" role="button" tabindex="0" aria-label="Upload PDF Area">
                     <h3>📄 Drop PDF file here or click to browse</h3>
-                    <label for="pdf-file-2" class="upload-link">
+                    <span class="upload-link">
                         Select PDF File
-                    </label>
-                    <input type="file" id="pdf-file-2" accept=".pdf" aria-label="Upload PDF file (alternative)">
+                    </span>
                 </div>
                 <div id="pdf-pages" style="display: none;" aria-live="polite">
                     <!-- PDF pages will be rendered here -->
@@ -1293,10 +1292,10 @@
             <h2 class="trace-title">Extraction Trace Log</h2>
             <div class="markdown-section">
                 <h4>📝 Markdown Assistant</h4>
-                <button onclick="document.getElementById('markdown-file').click()">Load Markdown</button>
-                <button onclick="toggleSearchInterface()">Search Text</button>
+                <button type="button" onclick="document.getElementById('markdown-file').click()">Load Markdown</button>
+                <button type="button" onclick="toggleSearchInterface()">Search Text</button>
                 <button onclick="handleExtractTables()" class="gemini-btn" style="font-size: 12px; padding: 6px 10px; margin: 5px 0 0 0;">✨ Extract Tables</button>
-                <input type="file" id="markdown-file" accept=".md,.txt" aria-label="Upload markdown file">
+                <input type="file" id="markdown-file" accept=".md,.txt" style="display:none;" aria-label="Upload markdown file">
                 <div id="markdown-status">No markdown file loaded.</div>
                 <div id="search-interface" class="search-interface">
                     <label for="search-query" class="hidden">Search Query</label>
@@ -1313,8 +1312,8 @@
             <div class="ai-assistant-section">
                 <h4>🖼️ Analyze Image</h4>
                 <p class="ai-subtitle">Upload a chart or figure to ask questions.</p>
-                <input type="file" id="image-upload-input" accept="image/*" class="hidden">
-                <button onclick="document.getElementById('image-upload-input').click()" class="full-width">Upload Image</button>
+                <input type="file" id="image-upload-input" accept="image/*" style="display:none;">
+                <button type="button" onclick="document.getElementById('image-upload-input').click()" class="full-width">Upload Image</button>
                 <img id="image-preview" src="" alt="Image preview" style="display: none; max-width: 100%; margin-top: 10px; border-radius: 4px;">
                 <textarea id="image-analysis-prompt" placeholder="Ask a question about the image..." rows="3" style="margin-top: 10px;"></textarea>
                 <button id="analyze-image-btn" class="gemini-btn full-width" onclick="handleImageAnalysis()" disabled>Analyze Image</button>
@@ -1332,11 +1331,11 @@
             <div class="export-section">
                 <h4>Export Options</h4>
                 <div class="export-buttons">
-                    <button onclick="exportExcel()" class="export-excel" style="background: #107C41; font-weight: bold;">📊 Excel</button>
-                    <button onclick="exportJSON()" class="export-json">📄 JSON</button>
-                    <button onclick="exportCSV()" class="export-csv">📊 CSV</button>
-                    <button onclick="exportAudit()" class="export-audit">📋 Audit</button>
-                    <button onclick="exportAnnotatedPDF()" class="export-pdf">📑 PDF</button>
+                        <button type="button" id="export-excel-btn" onclick="exportExcel()" class="export-excel" style="background: #107C41; font-weight: bold;">📊 Excel</button>
+                        <button type="button" id="export-json-btn" onclick="exportJSON()" class="export-json">📄 JSON</button>
+                        <button type="button" id="export-csv-btn" onclick="exportCSV()" class="export-csv">📊 CSV</button>
+                        <button type="button" id="export-audit-btn" onclick="exportAudit()" class="export-audit">📋 Audit</button>
+                        <button type="button" id="export-pdf-btn" onclick="exportAnnotatedPDF()" class="export-pdf">📑 PDF</button>
                 </div>
             </div>
             <div class="stats-container">
