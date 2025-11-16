@@ -16,8 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Multi-agent consensus voting with confidence scoring**
 - Table and image analysis with Gemini
 - Multi-step form wizard (8 steps)
-- Export to JSON, CSV, HTML audit reports
-- Google Sheets integration with OAuth 2.0
+- Export to JSON, CSV, Excel (XLSX), HTML audit reports
 - Dynamic field management for complex clinical data
 
 ---
@@ -687,22 +686,19 @@ All functions generate HTML with unique IDs, add remove buttons, and update rela
 
 ### ExportManager (`src/services/ExportManager.ts`)
 **4 Export Formats:**
-1. **exportJSON()** - Full data (formData + extractions)
-2. **exportCSV()** - Flattened extraction list
-3. **exportAudit()** - HTML report with extraction context
-4. **exportAnnotatedPDF()** - PDF with visual markers (future feature)
+1. **exportJSON()** - Full data (formData + extractions) with complete provenance
+2. **exportCSV()** - Flattened extraction list for spreadsheet analysis
+3. **exportExcel()** - Structured Excel workbook with multiple sheets (recommended for systematic reviews)
+4. **exportAudit()** - HTML report with extraction context for publication-grade documentation
+5. **exportAnnotatedPDF()** - PDF with visual markers (future feature)
 
-### Google Sheets Integration
-**Note:** Google Sheets service was documented but **not found in src/services/** directory.
+**Excel Export (Recommended):**
+The Excel export is the primary format for systematic review workflows. It generates a structured workbook with:
+- **Metadata Sheet:** Document information, extraction date, total pages
+- **Extractions Sheet:** All extractions with coordinates, method, and timestamps
+- **Summary Sheet:** Statistics and extraction counts
 
-Expected functionality (from documentation):
-- OAuth 2.0 authentication flow
-- Append to "Submissions" and "Extractions" sheets
-- Submission row: `[submissionId, timestamp, documentName, citation, doi, pmid, totalN]`
-- Extraction row: `[submissionId, fieldName, text, page, method, x, y, width, height]`
-
-**If implementing Google Sheets:**
-Create `src/services/GoogleSheetsService.ts` following pattern in `GOOGLESHEETS_SERVICE_SUMMARY.md`.
+Excel files can be easily merged for meta-analysis using Excel, R, Python, or statistical software. For aggregating data from multiple papers, simply combine Excel exports using your preferred analysis tool.
 
 ---
 
@@ -734,10 +730,6 @@ interface Extraction {
 ```typescript
 const CONFIG = {
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-    GOOGLE_API_KEY: 'your_google_api_key',
-    GOOGLE_CLIENT_ID: 'your_oauth_client_id',
-    GOOGLE_SHEET_ID: 'your_sheet_id',
-    GOOGLE_SCOPES: 'https://www.googleapis.com/auth/spreadsheets',
     PDF_WORKER: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
     PDF_CMAP_URL: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
     PDF_CMAP_PACKED: true
@@ -775,16 +767,15 @@ MemoryManager.registerListener(element, 'click', handler);
 
 ---
 
-## Window API (33 Functions) ⭐ UPDATED
+## Window API (32 Functions) ⭐ UPDATED
 
-The application exposes 33 functions globally via `window.ClinicalExtractor` for backward compatibility with HTML onclick handlers.
+The application exposes 32 functions globally via `window.ClinicalExtractor` for backward compatibility with HTML onclick handlers.
 
 **Categories:**
 - **Helpers (6):** calculateBoundingBox, addExtractionMarker, autoAdvanceField, clearSearchMarkers, blobToBase64
 - **Fields (9):** addIndication, addIntervention, addArm, addMortality, addMRS, addComplication, addPredictor, removeElement, updateArmSelectors
 - **AI (7):** generatePICO, generateSummary, validateFieldWithAI, findMetadata, handleExtractTables, handleImageAnalysis, handleDeepAnalysis
 - **Export (4):** exportJSON, exportCSV, exportAudit, exportAnnotatedPDF
-- **Google (1):** handleSubmitToGoogleSheets
 - **Search (2):** toggleSearchInterface, searchInPDF
 - **Multi-Agent Pipeline (4):** runFullAIPipeline, extractFiguresFromPDF, extractTablesFromPDF, displayPipelineResults ⭐ NEW
 - **Provenance Visualization (2):** toggleBoundingBoxes, toggleTableRegions ⭐ NEW
@@ -880,18 +871,17 @@ localStorage.getItem('clinical_extractions_simple')
 - ✅ Multi-agent AI pipeline operational (6 specialized agents)
 - ✅ Geometric figure & table extraction implemented
 - ✅ Bounding box provenance visualization working
-- ✅ All 33 functions exposed to Window API (was 29)
+- ✅ All 32 functions exposed to Window API (was 29)
 - ✅ Dependency injection implemented
 - ✅ Clean TypeScript compilation
 - ✅ Comprehensive documentation (990+ lines)
-- ⚠️ Google Sheets service documented but missing from src/services/
+- ✅ Excel export for systematic review workflows
 - ⚠️ Form validation currently disabled (lines 676-703 in FormManager.ts)
 
 ### Browser Compatibility
 - Requires ES2022 support
 - Uses native FileReader API
 - Depends on `btoa`/`atob` for base64
-- Google OAuth requires popup/redirect capability
 - Tested: Chrome, Firefox, Safari (recent versions)
 
 ### Performance Considerations
@@ -909,7 +899,7 @@ https://ai.studio/apps/drive/1DFFjaDptqv2f27UHIzLdxSc0rrZszk0G
 
 **Refactoring History:**
 - **Phase 1-3:** Core infrastructure and PDF system
-- **Phase 4:** Services (Export, Google Sheets)
+- **Phase 4:** Services (Export, Excel)
 - **Phase 5:** AI integration
 - **Phase 6:** Final integration with main.ts orchestration
 
@@ -931,11 +921,11 @@ See `REFACTORING_COMPLETE.md` for complete transformation details.
 - Review error messages in browser console
 - Test with simpler prompts first
 
-### Google Sheets Save Fails
-- Verify all three config values in `config/index.ts`
-- Check OAuth consent screen configuration
-- Ensure sheets "Submissions" and "Extractions" exist
-- Review OAuth scopes match sheet permissions
+### Excel Export Issues
+- Verify xlsx package is installed (`npm install`)
+- Check browser console for export errors
+- Ensure sufficient memory for large datasets
+- Try exporting smaller subsets of data first
 
 ### State Not Updating
 - Check AppStateManager subscribers
@@ -953,7 +943,7 @@ See `REFACTORING_COMPLETE.md` for complete transformation details.
 - **PDF Extraction Techniques:** `pdf-data-extraction-guide.md` (1569 lines) ⭐ NEW
 - **AI Service Architecture:** `AI_SERVICE_ARCHITECTURE.md`
 - **Refactoring Summary:** `REFACTORING_COMPLETE.md`
-- **Google Sheets Guide:** `GOOGLESHEETS_SERVICE_SUMMARY.md`
+- **Google Sheets Decision:** `analysis/google-sheets-decision.md` ⭐ NEW
 - **Integration Checklist:** `INTEGRATION_CHECKLIST.md`
 - **Phase 6 Details:** `PHASE_6_COMPLETE.md`
 
