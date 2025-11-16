@@ -50,14 +50,11 @@ function initializeAI(): GoogleGenAI {
     if (ai) return ai;
     
     if (!API_KEY) {
-        const errorMsg = `⚠️ Gemini API Key Not Configured
-
-To use AI features, create a .env.local file in the project root with:
-VITE_GEMINI_API_KEY=your_api_key_here
-
-Get your free API key at: https://ai.google.dev/`;
-        StatusManager.show(errorMsg, 'error', 30000);
-        throw new Error('Gemini API key not configured');
+        const errorMsg = "⚠️ Gemini API Key Not Configured\n\n"
+            + "To use AI features, create a .env.local file in the project root with:\n"
+            + "VITE_GEMINI_API_KEY=your_api_key_here\n\n"
+            + "Get your free API key at: https://ai.google.dev/";
+        throw new Error(errorMsg);
     }
     
     ai = new GoogleGenAI({ apiKey: API_KEY });
