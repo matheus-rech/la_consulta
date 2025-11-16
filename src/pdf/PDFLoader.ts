@@ -153,7 +153,12 @@ const PDFLoader = {
 
     try {
       // Clean up previous PDF resources before loading new one
-      PDFRenderer.cleanup();
+      try {
+        PDFRenderer.cleanup();
+      } catch (cleanupError) {
+        console.error("PDFRenderer cleanup failed:", cleanupError);
+        // Optionally, you could report this error to a status manager or telemetry here
+      }
 
       // Convert file to ArrayBuffer for PDF.js
       const arrayBuffer = await file.arrayBuffer();
