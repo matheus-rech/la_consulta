@@ -116,7 +116,7 @@ export const AnnotationService = {
     addAnnotation: (annotation: Omit<Annotation, 'id' | 'timestamp' | 'author'>): Annotation => {
         const newAnnotation: Annotation = {
             ...annotation,
-            id: `ann_${crypto.randomUUID()}`,
+            id: `ann_${typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2)}`,
             timestamp: Date.now(),
             author: AnnotationService.currentAuthor,
         };
