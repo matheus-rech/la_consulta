@@ -386,9 +386,11 @@ export const AnnotationService = {
         const index = AnnotationService.annotations.findIndex(a => a.id === id);
         if (index === -1) return false;
 
+        // Prevent updating id and pageNum
+        const { id: _id, pageNum: _pageNum, ...safeUpdates } = updates;
         AnnotationService.annotations[index] = {
             ...AnnotationService.annotations[index],
-            ...updates,
+            ...safeUpdates,
         };
 
         const pageNum = AnnotationService.annotations[index].pageNum;
