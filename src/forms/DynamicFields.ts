@@ -251,18 +251,3 @@ export const addComplication = () => DynamicFields.addComplication();
 export const addPredictor = () => DynamicFields.addPredictor();
 export const removeElement = (btn: HTMLElement) => DynamicFields.removeElement(btn);
 export const updateArmSelectors = () => DynamicFields.updateArmSelectors();
-
-// Global window bindings declaration
-declare global {
-    interface Window {
-        addIndication: () => void;
-        addIntervention: () => void;
-        addArm: () => void;
-        addMortality: () => void;
-        addMRS: () => void;
-        addComplication: () => void;
-        addPredictor: () => void;
-        removeElement: (btn: HTMLElement) => void;
-        updateArmSelectors: () => void;
-    }
-}

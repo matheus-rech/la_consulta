@@ -12,14 +12,6 @@
 import SecurityUtils from '../utils/security';
 import MemoryManager from '../utils/memory';
 
-// Temporary imports from index.tsx - these will be refactored in Phase 6
-declare global {
-    interface Window {
-        MemoryManager: typeof MemoryManager;
-        handleSubmitToGoogleSheets: (e: Event) => void;
-        updateArmSelectors: () => void;
-    }
-}
 
 // Temporary reference to objects still in index.tsx
 // These will be properly imported after Phase 6

@@ -8,49 +8,6 @@
  * Integrates all modules and initializes the application
  */
 
-// ==================== TYPE DECLARATIONS ====================
-
-declare global {
-    interface Window {
-        pdfjsLib: any;
-        ClinicalExtractor: {
-            // Helper Functions (6)
-            calculateBoundingBox: typeof import('./utils/helpers').calculateBoundingBox;
-            addExtractionMarker: typeof import('./utils/helpers').addExtractionMarker;
-            addExtractionMarkersForPage: typeof import('./utils/helpers').addExtractionMarkersForPage;
-            autoAdvanceField: typeof import('./utils/helpers').autoAdvanceField;
-            clearSearchMarkers: typeof import('./utils/helpers').clearSearchMarkers;
-            blobToBase64: typeof import('./utils/helpers').blobToBase64;
-            // Field Management Functions (9)
-            addIndication: () => void;
-            addIntervention: () => void;
-            addArm: () => void;
-            addMortality: () => void;
-            addMRS: () => void;
-            addComplication: () => void;
-            addPredictor: () => void;
-            removeElement: (btn: HTMLElement) => void;
-            updateArmSelectors: () => void;
-            // AI Functions (7)
-            generatePICO: () => Promise<void>;
-            generateSummary: () => Promise<void>;
-            validateFieldWithAI: (fieldId: string) => Promise<void>;
-            findMetadata: () => Promise<void>;
-            handleExtractTables: () => Promise<void>;
-            handleImageAnalysis: () => Promise<void>;
-            handleDeepAnalysis: () => Promise<void>;
-            // Export Functions (5)
-            exportJSON: () => void;
-            exportCSV: () => void;
-            exportExcel: () => void;
-            exportAudit: () => void;
-            exportAnnotatedPDF: () => void;
-            // Search Functions (2)
-            toggleSearchInterface: () => void;
-            searchInPDF: () => Promise<void>;
-        };
-    }
-}
 
 // ==================== IMPORTS ====================
 
