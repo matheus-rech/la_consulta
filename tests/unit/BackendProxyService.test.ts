@@ -224,9 +224,9 @@ describe('BackendProxyService', () => {
                 headers: new Map(),
             };
 
-            (global.fetch as jest.Mock).mockResolvedValueOnce(mockResponse);
+            (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
-            await expect(BackendProxyService.get('/users')).rejects.toThrow('HTTP 404');
+            await expect(BackendProxyService.get('/users')).rejects.toThrow(/HTTP 404/);
         });
 
         it('should include custom headers', async () => {
@@ -416,6 +416,8 @@ describe('BackendProxyService', () => {
         });
 
         it('should handle batch failures gracefully', async () => {
+            BackendProxyService.configure({ retryAttempts: 1 });
+            
             (global.fetch as jest.Mock)
                 .mockResolvedValueOnce({
                     ok: true,
@@ -484,7 +486,8 @@ describe('BackendProxyService', () => {
         });
 
         it('should return false for unhealthy endpoint', async () => {
-            (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Connection failed'));
+            BackendProxyService.configure({ retryAttempts: 1 });
+            (global.fetch as jest.Mock).mockRejectedValue(new Error('Connection failed'));
 
             const isHealthy = await BackendProxyService.healthCheck();
 
