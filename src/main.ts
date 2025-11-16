@@ -44,6 +44,9 @@ import {
     handleDeepAnalysis
 } from './services/AIService';
 import SearchService from './services/SearchService';
+import SemanticSearchService from './services/SemanticSearchService';
+import AnnotationService from './services/AnnotationService';
+import BackendProxyService from './services/BackendProxyService';
 import LRUCache from './utils/LRUCache';
 import CircuitBreaker from './utils/CircuitBreaker';
 import {
@@ -650,6 +653,127 @@ function displayPipelineResults(enhancedTables: any[], enhancedFigures: any[], s
 // ==================== WINDOW API EXPOSURE ====================
 
 /**
+ * Toggle semantic search panel
+ */
+function toggleSemanticSearch() {
+    const panel = document.getElementById('semantic-search-panel');
+    if (panel) {
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+/**
+ * Perform semantic search
+ */
+async function performSemanticSearch() {
+    const input = document.getElementById('semantic-search-input') as HTMLInputElement;
+    const resultsDiv = document.getElementById('semantic-search-results');
+    
+    if (!input || !resultsDiv) return;
+    
+    const query = input.value.trim();
+    if (!query) {
+        StatusManager.show('Please enter a search query', 'warning');
+        return;
+    }
+    
+    try {
+        StatusManager.showLoading(true);
+        const results = await SemanticSearchService.search(query);
+        
+        if (results.length === 0) {
+            resultsDiv.innerHTML = '<p style="color: #666; font-style: italic;">No results found</p>';
+        } else {
+            resultsDiv.innerHTML = results.map((result, idx) => `
+                <div style="padding: 8px; margin: 4px 0; background: white; border-left: 3px solid #0288d1; border-radius: 4px; cursor: pointer;" onclick="window.ClinicalExtractor.jumpToPage(${result.pageNum})">
+                    <div style="font-size: 12px; color: #666;">Result ${idx + 1} • Page ${result.pageNum} • Score: ${result.score.toFixed(2)}</div>
+                    <div style="margin-top: 4px;">${result.text.substring(0, 150)}${result.text.length > 150 ? '...' : ''}</div>
+                </div>
+            `).join('');
+        }
+        
+        StatusManager.show(`Found ${results.length} results`, 'success');
+    } catch (error) {
+        console.error('Semantic search error:', error);
+        StatusManager.show('Search failed. Check console for details.', 'error');
+    } finally {
+        StatusManager.showLoading(false);
+    }
+}
+
+/**
+ * Jump to specific page
+ */
+async function jumpToPage(pageNum: number) {
+    const state = AppStateManager.getState();
+    if (!state.pdfDoc) {
+        StatusManager.show('No PDF loaded', 'warning');
+        return;
+    }
+    
+    await PDFRenderer.renderPage(state.pdfDoc, pageNum);
+}
+
+/**
+ * Toggle annotation tools panel
+ */
+function toggleAnnotationTools() {
+    const panel = document.getElementById('annotation-tools-panel');
+    if (panel) {
+        const isVisible = panel.style.display !== 'none';
+        panel.style.display = isVisible ? 'none' : 'block';
+        
+        if (!isVisible) {
+            const state = AppStateManager.getState();
+            const pdfContainer = document.getElementById('pdf-container');
+            if (state.pdfDoc && pdfContainer) {
+                const canvas = pdfContainer.querySelector('canvas');
+                if (canvas && state.currentPage) {
+                    AnnotationService.initializeLayer(state.currentPage, pdfContainer);
+                    StatusManager.show('Annotation tools enabled. Click on PDF to annotate.', 'info');
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Set annotation tool
+ */
+function setAnnotationTool(tool: string) {
+    const colorSelect = document.getElementById('annotation-color') as HTMLSelectElement;
+    const color = colorSelect ? colorSelect.value : 'yellow';
+    
+    AnnotationService.setCurrentTool(tool as any);
+    AnnotationService.setCurrentColor(color as any);
+    
+    StatusManager.show(`Annotation tool: ${tool} (${color})`, 'info');
+}
+
+/**
+ * Configure backend proxy
+ */
+function configureBackendProxy() {
+    const baseURL = prompt('Enter backend API base URL:', 'https://api.example.com');
+    if (!baseURL) return;
+    
+    const timeout = parseInt(prompt('Enter timeout (ms):', '5000') || '5000');
+    const retryAttempts = parseInt(prompt('Enter retry attempts:', '3') || '3');
+    
+    BackendProxyService.configure({
+        baseURL,
+        timeout,
+        retryAttempts,
+        retryDelay: 1000,
+        cacheEnabled: true,
+        cacheTTL: 60000,
+        rateLimitPerSecond: 10
+    });
+    
+    StatusManager.show(`Backend proxy configured: ${baseURL}`, 'success');
+}
+
+/**
  * Expose all functions to the window object for HTML onclick handlers
  */
 function exposeWindowAPI() {
@@ -701,6 +825,17 @@ function exposeWindowAPI() {
 
         // New: Multi-Agent Pipeline (1)
         runFullAIPipeline,
+
+        SemanticSearchService,
+        AnnotationService,
+        BackendProxyService,
+
+        toggleSemanticSearch,
+        performSemanticSearch,
+        jumpToPage,
+        toggleAnnotationTools,
+        setAnnotationTool,
+        configureBackendProxy,
 
         triggerCrashStateSave,
         triggerManualRecovery

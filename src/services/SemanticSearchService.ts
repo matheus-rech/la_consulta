@@ -219,7 +219,7 @@ export const SemanticSearchService = {
                 const exactMatches = findMatches(chunk.text, term);
                 if (exactMatches.length > 0) {
                     const tfidfScore = calculateTFIDF(term, chunk.text, allTexts);
-                    const score = tfidfScore * 10 + exactMatches.length;
+                    const score = tfidfScore * 10 + exactMatches.length * 2;
                     
                     if (score > bestScore) {
                         bestScore = score;
@@ -228,13 +228,13 @@ export const SemanticSearchService = {
                     }
                 }
 
-                if (term.split(/\s+/).length === 1) {
+                if (term.split(/\s+/).length === 1 && exactMatches.length === 0) {
                     const words = chunk.text.split(/\s+/);
                     for (let i = 0; i < words.length; i++) {
                         const word = words[i].replace(/[^\w]/g, '');
                         const similarity = calculateSimilarity(term, word);
                         
-                        if (similarity >= fuzzyThreshold) {
+                        if (similarity >= fuzzyThreshold && similarity < 1.0) {
                             const wordStart = chunk.text.indexOf(words[i]);
                             const wordEnd = wordStart + words[i].length;
                             

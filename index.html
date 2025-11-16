@@ -1271,6 +1271,51 @@
                 </button>
             </div>
 
+            <!-- New: Integrated Services Toolbar -->
+            <div class="services-toolbar" style="padding: 8px; background: #e8f5e9; border-bottom: 1px solid #c8e6c9; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <strong style="color: #2e7d32; margin-right: 8px;">🔧 Services:</strong>
+                <button onclick="toggleSemanticSearch()" class="btn-service" id="search-toggle" style="padding: 6px 12px; background: #00bcd4; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;" title="Toggle semantic search panel">
+                    🔍 Search
+                </button>
+                <button onclick="toggleAnnotationTools()" class="btn-service" id="annotation-toggle" style="padding: 6px 12px; background: #ff5722; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;" title="Toggle annotation toolbar">
+                    ✏️ Annotate
+                </button>
+                <button onclick="configureBackendProxy()" class="btn-service" style="padding: 6px 12px; background: #607d8b; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;" title="Configure backend proxy settings">
+                    ⚙️ Proxy
+                </button>
+            </div>
+
+            <!-- Semantic Search Panel (Hidden by default) -->
+            <div id="semantic-search-panel" style="display: none; padding: 12px; background: #f0f9ff; border-bottom: 1px solid #b3e5fc;">
+                <strong style="color: #0277bd;">🔍 Semantic Search</strong>
+                <div style="margin-top: 8px; display: flex; gap: 8px;">
+                    <input type="text" id="semantic-search-input" placeholder="Search in document..." style="flex: 1; padding: 6px 12px; border: 1px solid #81d4fa; border-radius: 4px;">
+                    <button onclick="performSemanticSearch()" style="padding: 6px 16px; background: #0288d1; color: white; border: none; border-radius: 4px; cursor: pointer;">Search</button>
+                </div>
+                <div id="semantic-search-results" style="margin-top: 8px; max-height: 200px; overflow-y: auto;"></div>
+            </div>
+
+            <!-- Annotation Tools Panel (Hidden by default) -->
+            <div id="annotation-tools-panel" style="display: none; padding: 12px; background: #fff3e0; border-bottom: 1px solid #ffe0b2;">
+                <strong style="color: #e65100;">✏️ Annotation Tools</strong>
+                <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button onclick="setAnnotationTool('highlight')" style="padding: 6px 12px; background: #ffeb3b; color: #000; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">🖍️ Highlight</button>
+                    <button onclick="setAnnotationTool('note')" style="padding: 6px 12px; background: #ffc107; color: #000; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">📝 Note</button>
+                    <button onclick="setAnnotationTool('rectangle')" style="padding: 6px 12px; background: #ff9800; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">▭ Rectangle</button>
+                    <button onclick="setAnnotationTool('circle')" style="padding: 6px 12px; background: #ff5722; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">⭕ Circle</button>
+                    <button onclick="setAnnotationTool('arrow')" style="padding: 6px 12px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">➡️ Arrow</button>
+                    <button onclick="setAnnotationTool('freehand')" style="padding: 6px 12px; background: #e91e63; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">✍️ Draw</button>
+                    <select id="annotation-color" style="padding: 6px; border: 1px solid #ff9800; border-radius: 4px;">
+                        <option value="yellow">Yellow</option>
+                        <option value="green">Green</option>
+                        <option value="blue">Blue</option>
+                        <option value="red">Red</option>
+                        <option value="purple">Purple</option>
+                        <option value="orange">Orange</option>
+                    </select>
+                </div>
+            </div>
+
             <div id="pdf-container" class="pdf-container">
                 <div id="upload-area" class="upload-area" role="button" tabindex="0" aria-label="Upload PDF Area">
                     <h3>📄 Drop PDF file here or click to browse</h3>
