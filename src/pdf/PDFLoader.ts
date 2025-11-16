@@ -153,6 +153,9 @@ const PDFLoader = {
     StatusManager.showLoading(true);
 
     try {
+      // Clean up previous PDF resources before loading new one
+      PDFRenderer.cleanup();
+
       // Convert file to ArrayBuffer for PDF.js
       const arrayBuffer = await file.arrayBuffer();
 
