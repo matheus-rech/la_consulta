@@ -296,7 +296,7 @@ async function generatePICO(): Promise<void> {
             throw new Error("Could not read text from the PDF.");
         }
 
-        const systemPrompt = "You are an expert clinical research assistant. Your task is to extract PICO-T information from the provided clinical study text and return it as a JSON object. Be concise and accurate. If information is not found, return an empty string for that field.";
+        const systemPrompt = "You are an expert clinical research assistant specializing in systematic reviews. Your task is to extract PICO-TT (Population, Intervention, Comparator, Outcomes, Timing, and sTudy Type) information from the provided clinical study text using the PICO-TT framework methodology. This framework is essential for systematic review quality and research reproducibility. Return the information as a JSON object. Be concise and accurate. If information is not found, return an empty string for that field.";
         const userPrompt = `Here is the clinical study text:\n\n${documentText}`;
 
         const picoSchema = {
