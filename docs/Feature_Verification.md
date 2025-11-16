@@ -47,11 +47,16 @@ Each feature will be tested systematically with the Kim2016.pdf document. Result
 - Trace log shows entries with method tags (e.g., "gemini-pico")
 - isProcessing mutex prevents concurrent operations
 
-**Result**: ⏸️ NOT TESTED
+**Result**: ✅ CODE VERIFIED
 
-**Evidence**: -
+**Evidence**: 
+- AIService.ts contains 7 AI functions (lines 263-806)
+- All functions use try-catch-finally with isProcessing mutex
+- API key configured via import.meta.env.VITE_GEMINI_API_KEY (lines 37-39)
+- Model selection: gemini-2.5-flash, gemini-2.5-pro, flash-thinking-exp
+- Retry logic with exponential backoff (lines 215-255)
 
-**Notes**: Requires valid GEMINI_API_KEY and PDF upload
+**Notes**: ⚠️ API key exposed client-side (security risk). Backend proxy recommended but not implemented.
 
 ---
 
