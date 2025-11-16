@@ -37,7 +37,7 @@ const SecurityUtils = {
       extraction.page >= 0 && // Page 0 for AI
       extraction.method &&
       typeof extraction.method === 'string' &&
-      EXTRACTION_METHODS.includes(extraction.method)
+      EXTRACTION_METHODS.includes(extraction.method as ExtractionMethod)
     );
   },
 
