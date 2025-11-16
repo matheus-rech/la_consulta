@@ -6,8 +6,18 @@
 // Event listener tracking type defined inline
 
 /**
- * Memory management utilities for tracking and cleaning up event listeners and timeouts
- * Prevents memory leaks by maintaining references to all registered listeners and timeouts
+ * Cleanup function type
+ */
+type CleanupFunction = () => void;
+
+/**
+ * Memory management utilities for tracking and cleaning up event listeners, timeouts, and module resources
+ * Prevents memory leaks by maintaining references to all registered listeners, timeouts, and cleanup functions
+ * 
+ * Architecture:
+ * - Uses a central cleanup registry pattern for loose coupling between modules
+ * - Modules can register cleanup functions without creating circular dependencies
+ * - Type-safe alternative to using global window variables
  */
 const MemoryManager = {
   listeners: [] as Array<{
@@ -16,6 +26,7 @@ const MemoryManager = {
     handler: EventListenerOrEventListenerObject;
   }>,
   timeouts: [] as number[],
+  cleanupCallbacks: new Map<string, CleanupFunction>(),
 
   /**
    * Register an event listener and track it for cleanup
@@ -41,7 +52,34 @@ const MemoryManager = {
   },
 
   /**
-   * Clean up all registered event listeners and timeouts
+   * Register a cleanup function to be called during cleanup
+   * This allows modules to register their own cleanup logic without creating circular dependencies
+   * 
+   * @param name - Unique name for the cleanup function (e.g., 'PDFRenderer', 'AnnotationService')
+   * @param cleanupFn - The cleanup function to execute
+   * 
+   * @example
+   * ```typescript
+   * // In PDFRenderer module initialization
+   * MemoryManager.registerCleanup('PDFRenderer', () => {
+   *   PDFRenderer.cleanup();
+   * });
+   * ```
+   */
+  registerCleanup: function (name: string, cleanupFn: CleanupFunction): void {
+    this.cleanupCallbacks.set(name, cleanupFn);
+  },
+
+  /**
+   * Unregister a cleanup function
+   * @param name - Name of the cleanup function to remove
+   */
+  unregisterCleanup: function (name: string): void {
+    this.cleanupCallbacks.delete(name);
+  },
+
+  /**
+   * Clean up all registered event listeners, timeouts, and module resources
    * Should be called before page unload or when resetting the application
    */
   cleanup: function (): void {
@@ -53,21 +91,22 @@ const MemoryManager = {
     // Clear all timeouts
     this.timeouts.forEach((id) => clearTimeout(id));
 
-    // Reset the arrays
+    // Execute all registered cleanup callbacks
+    this.cleanupCallbacks.forEach((cleanupFn, name) => {
+      try {
+        cleanupFn();
+        console.log(`${name} cleanup completed`);
+      } catch (err) {
+        console.error(`${name} cleanup failed:`, err);
+      }
+    });
+
+    // Reset the arrays and map
     this.listeners = [];
     this.timeouts = [];
+    this.cleanupCallbacks.clear();
 
-    // Clean up PDFRenderer resources
-    // Note: We use a dynamic import check to avoid circular dependencies
-    if (typeof window !== 'undefined' && (window as any).PDFRenderer) {
-      try {
-        (window as any).PDFRenderer.cleanup();
-      } catch (err) {
-        console.error('PDFRenderer cleanup failed:', err);
-      }
-    }
-
-    console.log('Cleanup performed (simplified)');
+    console.log('MemoryManager cleanup performed');
   },
 };
 
