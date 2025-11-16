@@ -29,20 +29,8 @@ import TextSelection from './TextSelection';
  *
  * @remarks
  * PDF.js is loaded globally via CDN and attached to window.pdfjsLib.
- * These types provide minimal TypeScript support for the library.
+ * Window interface is now in types/window.d.ts
  */
-declare global {
-  interface Window {
-    pdfjsLib: {
-      GlobalWorkerOptions: {
-        workerSrc: string;
-      };
-      getDocument: (options: PDFDocumentLoadingTask) => {
-        promise: Promise<PDFDocumentProxy>;
-      };
-    };
-  }
-}
 
 /**
  * PDF document loading task options

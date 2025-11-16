@@ -252,7 +252,7 @@ export const PDFRenderer = {
             }
 
             // Clear any previous search markers
-            clearSearchMarkers(state.searchMarkers);
+            clearSearchMarkers(state.searchMarkers.map(m => m.element));
 
             // Render bounding box overlays if enabled
             if (PDFRenderer.showBoundingBoxes) {

@@ -102,7 +102,7 @@ const ExportManager = {
         XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
 
         // SHEET 2: Extractions (Detailed)
-        const extractionsData = [
+        const extractionsData: (string | number)[][] = [
             ['Field Name', 'Extracted Text', 'Page', 'Method', 'X', 'Y', 'Width', 'Height', 'Timestamp']
         ];
 

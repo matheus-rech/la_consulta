@@ -1,0 +1,113 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
+ * Global Window interface extensions for the Clinical Extractor application.
+ * Consolidates all window-level type declarations to avoid conflicts.
+ */
+
+import type { TextItem, Coordinates, Extraction } from './index';
+
+declare global {
+  interface Window {
+    /** Callback when Google API client loads */
+    gapiLoaded: () => void;
+    /** Callback when Google Identity Services loads */
+    gisLoaded: () => void;
+    /** PDF.js library object */
+    pdfjsLib: {
+      GlobalWorkerOptions: {
+        workerSrc: string;
+      };
+      getDocument: (options: any) => {
+        promise: Promise<any>;
+      };
+    };
+    /** Google API object */
+    google: any;
+    /** Google API client */
+    gapi: any;
+    /** Memory manager for cleanup */
+    MemoryManager: {
+      listeners: Array<{ el: Window | HTMLElement | Document; type: string; handler: EventListenerOrEventListenerObject }>;
+      timeouts: number[];
+      registerEventListener: (el: Window | HTMLElement | Document, type: string, handler: EventListenerOrEventListenerObject) => void;
+      registerTimeout: (id: number) => void;
+      cleanup: () => void;
+    };
+    /** Calculate bounding box from text items */
+    calculateBoundingBox: (items: TextItem[]) => Coordinates;
+    /** Add visual marker for an extraction */
+    addExtractionMarker: (extraction: Extraction) => void;
+    /** Add all extraction markers for a page */
+    addExtractionMarkersForPage: (pageNum: number, extractions: Extraction[]) => void;
+    /** Automatically advance to next field */
+    autoAdvanceField: () => void;
+    /** Clear all search markers from PDF */
+    clearSearchMarkers: () => void;
+    /** Add indication field */
+    addIndication: () => void;
+    /** Add intervention field */
+    addIntervention: () => void;
+    /** Add study arm field */
+    addArm: () => void;
+    /** Add mortality outcome field */
+    addMortality: () => void;
+    /** Add mRS outcome field */
+    addMRS: () => void;
+    /** Add complication field */
+    addComplication: () => void;
+    /** Add predictor field */
+    addPredictor: () => void;
+    /** Remove dynamic field element */
+    removeElement: (btn: HTMLElement) => void;
+    /** Update arm selector dropdowns */
+    updateArmSelectors: () => void;
+    /** Export data as JSON */
+    exportJSON: () => void;
+    /** Export data as CSV */
+    exportCSV: () => void;
+    /** Export audit log */
+    exportAudit: () => void;
+    /** Export annotated PDF */
+    exportAnnotatedPDF: () => void;
+    /** Toggle search interface visibility */
+    toggleSearchInterface: () => void;
+    /** Search for text in PDF */
+    searchInPDF: () => Promise<void>;
+    /** Generate PICO analysis with AI */
+    generatePICO: () => Promise<void>;
+    /** Generate summary with AI */
+    generateSummary: () => Promise<void>;
+    /** Validate field with AI */
+    validateFieldWithAI: (fieldId: string) => Promise<void>;
+    /** Find metadata with AI */
+    findMetadata: () => Promise<void>;
+    /** Extract tables with AI */
+    handleExtractTables: () => Promise<void>;
+    /** Analyze images with AI */
+    handleImageAnalysis: () => Promise<void>;
+    /** Perform deep analysis with AI */
+    handleDeepAnalysis: () => Promise<void>;
+    /** Submit data to Google Sheets */
+    handleSubmitToGoogleSheets: (e: Event) => Promise<void>;
+    /** Extract figures from PDF using operator interception */
+    extractFiguresFromPDF: () => Promise<void>;
+    /** Extract tables from PDF using geometric detection */
+    extractTablesFromPDF: () => Promise<void>;
+    /** Toggle bounding box provenance visualization */
+    toggleBoundingBoxes: () => Promise<void>;
+    /** Toggle table region visualization */
+    toggleTableRegions: () => Promise<void>;
+    /** Run full multi-agent AI pipeline */
+    runFullAIPipeline: () => Promise<void>;
+    /** Clinical Extractor API object */
+    ClinicalExtractor: any;
+    /** Convert blob to base64 */
+    blobToBase64: (blob: Blob) => Promise<string>;
+  }
+}
+
+export {};
