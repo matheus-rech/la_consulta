@@ -43,6 +43,9 @@ import {
     handleImageAnalysis,
     handleDeepAnalysis
 } from './services/AIService';
+import SearchService from './services/SearchService';
+import LRUCache from './utils/LRUCache';
+import CircuitBreaker from './utils/CircuitBreaker';
 import {
     exportJSON,
     exportCSV,
@@ -120,7 +123,7 @@ function toggleSearchInterface() {
 }
 
 /**
- * Search for text in the PDF document
+ * Search for text in the PDF document using SearchService
  */
 async function searchInPDF() {
     const query = (document.getElementById('search-query') as HTMLInputElement).value.trim();
@@ -137,19 +140,31 @@ async function searchInPDF() {
 
     StatusManager.show('Searching across all pages...', 'info');
 
-    // Clear previous search markers
-    const markers = (state.searchMarkers || []).map(m => m.element);
-    clearSearchMarkers(markers);
+    try {
+        const results = await SearchService.search(query);
+        
+        // Display results
+        const resultsContainer = document.getElementById('search-results');
+        if (resultsContainer) {
+            if (results.length === 0) {
+                resultsContainer.innerHTML = '<li>No results found</li>';
+            } else {
+                resultsContainer.innerHTML = results.map((result, idx) => `
+                    <li>
+                        <strong>Page ${result.page}</strong> (Result ${idx + 1}/${results.length})<br>
+                        <em>${result.context}</em>
+                    </li>
+                `).join('');
+                
+                SearchService.highlightResults(state.currentPage);
+            }
+        }
 
-    // This is a simplified implementation
-    // Full implementation would be in a PDFSearch module
-    console.log('Search Query:', query);
-    const resultsContainer = document.getElementById('search-results');
-    if (resultsContainer) {
-        resultsContainer.innerHTML = '<li>Search results would appear here...</li>';
+        StatusManager.show(`Found ${results.length} result(s)`, 'success');
+    } catch (error) {
+        console.error('Search error:', error);
+        StatusManager.show('Search failed', 'error');
     }
-
-    StatusManager.show('Search complete (preview)', 'success');
 }
 
 // ==================== EVENT LISTENERS ====================
