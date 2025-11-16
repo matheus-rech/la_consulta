@@ -90,9 +90,13 @@ export const AnnotationService = {
         canvas.style.pointerEvents = 'none';
         canvas.style.zIndex = '10';
 
-        const rect = container.getBoundingClientRect();
-        canvas.width = rect.width;
-        canvas.height = rect.height;
+        // Use clientWidth/clientHeight for reliable sizing, and set CSS style width/height to match
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        canvas.width = width;
+        canvas.height = height;
+        canvas.style.width = width + 'px';
+        canvas.style.height = height + 'px';
 
         container.appendChild(canvas);
 
