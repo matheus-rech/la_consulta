@@ -123,7 +123,8 @@ class RateLimiter {
 
         const waitTime = (1 - this.tokens) / this.tokensPerSecond * 1000;
         await new Promise(resolve => setTimeout(resolve, waitTime));
-        this.tokens = 0;
+        this.refill();
+        this.tokens = Math.max(0, this.tokens - 1);
     }
 
     private refill(): void {
