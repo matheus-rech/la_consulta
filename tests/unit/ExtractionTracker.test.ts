@@ -6,6 +6,9 @@ describe('ExtractionTracker', () => {
   let mockStatusManager: any;
 
   beforeEach(() => {
+    // Reset ExtractionTracker state for test isolation BEFORE setting up mocks
+    ExtractionTracker.__resetForTesting();
+    
     mockAppStateManager = {
       getState: jest.fn(() => ({
         extractions: [],

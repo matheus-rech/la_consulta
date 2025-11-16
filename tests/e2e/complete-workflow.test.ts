@@ -59,8 +59,9 @@ describe('Complete User Workflow E2E Test', () => {
   });
 
   beforeEach(() => {
-    // Clear extractions between tests to prevent accumulation
-    AppStateManager.setState({ extractions: [] });
+    // Reset state for test isolation
+    AppStateManager.__resetForTesting();
+    ExtractionTracker.__resetForTesting();
   });
 
   describe('Step 1: PDF Upload and Loading', () => {

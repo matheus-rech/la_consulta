@@ -65,6 +65,7 @@ interface ExtractionTrackerType {
     saveToStorage: () => void;
     loadFromStorage: () => void;
     getExtractions: () => Extraction[];
+    __resetForTesting: () => void;
 }
 
 /**
@@ -321,6 +322,32 @@ const ExtractionTracker: ExtractionTrackerType = {
      */
     getExtractions: function(): Extraction[] {
         return this.extractions;
+    },
+
+    /**
+     * Test-only method to reset all internal state.
+     * This clears extractions, fieldMap, and localStorage.
+     * 
+     * @internal
+     */
+    __resetForTesting: function(): void {
+        this.extractions = [];
+        this.fieldMap.clear();
+        localStorage.removeItem('clinical_extractions_simple');
+        
+        // Clear trace log UI if it exists
+        const logContainer = document.getElementById('trace-log');
+        if (logContainer) {
+            logContainer.innerHTML = '';
+        }
+        
+        // Update stats to show zero
+        this.updateStats();
+        
+        // Update global state if available
+        if (this.appStateManager) {
+            this.appStateManager.setState({ extractions: [] });
+        }
     }
 };
 
