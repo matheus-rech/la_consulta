@@ -66,12 +66,7 @@ type FigureType =
 // ==================== AGENT ORCHESTRATOR ====================
 
 class AgentOrchestrator {
-    private pythonAgentPath: string;
-    private tableExtractorPath: string;
-
     constructor() {
-        this.pythonAgentPath = '/Users/matheusrech/Downloads/Deep Research MCP/claude_code_medical_agent.py';
-        this.tableExtractorPath = '/Users/matheusrech/agentic_qa_extraction/agents/table_extractor.py';
     }
 
     /**

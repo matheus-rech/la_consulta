@@ -38,19 +38,31 @@ const API_KEY = import.meta.env.VITE_GEMINI_API_KEY ||
                 import.meta.env.VITE_API_KEY ||
                 import.meta.env.VITE_GOOGLE_API_KEY;
 
-if (!API_KEY) {
-    console.error("AIService: Gemini API key not found in environment variables");
-    console.warn("Please add one of the following to .env.local:");
-    console.warn("  VITE_GEMINI_API_KEY=your_key (recommended)");
-    console.warn("  VITE_API_KEY=your_key (alternative)");
-    console.warn("  VITE_GOOGLE_API_KEY=your_key (alternative)");
-    throw new Error("Gemini API key not set. Add VITE_GEMINI_API_KEY to .env.local");
-}
+/**
+ * Lazy-initialized AI client instance
+ */
+let ai: GoogleGenAI | null = null;
 
 /**
- * Initialize Google Generative AI client
+ * Initialize Google Generative AI client with user-friendly error handling
  */
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+function initializeAI(): GoogleGenAI {
+    if (ai) return ai;
+    
+    if (!API_KEY) {
+        const errorMsg = `⚠️ Gemini API Key Not Configured
+
+To use AI features, create a .env.local file in the project root with:
+VITE_GEMINI_API_KEY=your_api_key_here
+
+Get your free API key at: https://ai.google.dev/`;
+        StatusManager.show(errorMsg, 'error', 30000);
+        throw new Error('Gemini API key not configured');
+    }
+    
+    ai = new GoogleGenAI({ apiKey: API_KEY });
+    return ai;
+}
 
 // ==================== HELPER FUNCTIONS ====================
 
@@ -123,7 +135,7 @@ async function getAllPdfText(): Promise<string | null> {
  */
 async function callGeminiWithSearch(systemInstruction: string, userPrompt: string, responseSchema: any): Promise<string> {
     return await retryWithExponentialBackoff(async () => {
-        const response = await ai.models.generateContent({
+        const response = await initializeAI().models.generateContent({
             model: "gemini-2.5-flash",
             contents: [{ parts: [{ text: userPrompt }] }],
             config: {
@@ -288,7 +300,7 @@ async function generatePICO(): Promise<void> {
 
         // Call Gemini with retry logic
         const response = await retryWithExponentialBackoff(async () => {
-            return await ai.models.generateContent({
+            return await initializeAI().models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: [{ parts: [{ text: userPrompt }] }],
                 config: {
@@ -369,7 +381,7 @@ async function generateSummary(): Promise<void> {
         const userPrompt = `Please summarize the following clinical study text:\n\n${documentText}`;
 
         const response = await retryWithExponentialBackoff(async () => {
-            return await ai.models.generateContent({
+            return await initializeAI().models.generateContent({
                 model: 'gemini-flash-latest',
                 contents: [{ parts: [{ text: userPrompt }] }],
                 config: {
@@ -466,7 +478,7 @@ async function validateFieldWithAI(fieldId: string): Promise<void> {
         };
 
         const response = await retryWithExponentialBackoff(async () => {
-            return await ai.models.generateContent({
+            return await initializeAI().models.generateContent({
                 model: 'gemini-2.5-pro',
                 contents: [{ parts: [{ text: userPrompt }] }],
                 config: {
@@ -604,7 +616,7 @@ async function handleExtractTables(): Promise<void> {
         };
 
         const response = await retryWithExponentialBackoff(async () => {
-            return await ai.models.generateContent({
+            return await initializeAI().models.generateContent({
                 model: 'gemini-2.5-pro',
                 contents: documentText,
                 config: {
@@ -727,7 +739,7 @@ async function handleImageAnalysis(): Promise<void> {
         };
 
         const response = await retryWithExponentialBackoff(async () => {
-            return await ai.models.generateContent({
+            return await initializeAI().models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: { parts: [imagePart, textPart] },
             });
@@ -773,7 +785,7 @@ async function handleDeepAnalysis(): Promise<void> {
         const fullPrompt = `Based on the following document text, please answer this question: ${prompt}\n\nDOCUMENT TEXT:\n${documentText}`;
 
         const response = await retryWithExponentialBackoff(async () => {
-            return await ai.models.generateContent({
+            return await initializeAI().models.generateContent({
                 model: 'gemini-2.5-pro',
                 contents: fullPrompt,
                 config: {

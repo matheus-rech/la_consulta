@@ -104,6 +104,16 @@ export interface SearchMarker {
 }
 
 /**
+ * Cached page text data with full text and text items array.
+ */
+export interface PageTextData {
+  /** Full text content of the page */
+  fullText: string;
+  /** Array of text items from PDF.js */
+  items: any[];
+}
+
+/**
  * Global application state managed by AppStateManager.
  */
 export interface AppState {
@@ -132,7 +142,7 @@ export interface AppState {
   /** Whether markdown content has been loaded */
   markdownLoaded: boolean;
   /** Cache of extracted text per page (page number -> text) */
-  pdfTextCache: Map<number, { fullText: string; items: any[] }>;
+  pdfTextCache: Map<number, PageTextData>;
   /** Active search result markers on the PDF */
   searchMarkers: SearchMarker[];
   /** Maximum size of the text cache */
