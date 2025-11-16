@@ -256,15 +256,17 @@ export const SemanticSearchService = {
                         
                         // Find the position of this word instance starting from offset
                         const wordStart = chunk.text.indexOf(rawWord, offset);
-                        const wordEnd = wordStart + rawWord.length;
-                        offset = wordEnd + 1; // Move offset past this word and the following space
+                        if (wordStart !== -1) {
+                            const wordEnd = wordStart + rawWord.length;
+                            offset = wordEnd + 1; // Move offset past this word and the following space
 
-                        if (similarity >= fuzzyThreshold && wordStart !== -1) {
-                            const score = similarity * 5;
-                            if (score > bestScore) {
-                                bestScore = score;
-                                bestMatchType = 'fuzzy';
-                                bestMatches = [{ start: wordStart, end: wordEnd }];
+                            if (similarity >= fuzzyThreshold) {
+                                const score = similarity * 5;
+                                if (score > bestScore) {
+                                    bestScore = score;
+                                    bestMatchType = 'fuzzy';
+                                    bestMatches = [{ start: wordStart, end: wordEnd }];
+                                }
                             }
                         }
                     }
