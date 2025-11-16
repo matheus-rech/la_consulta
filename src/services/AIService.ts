@@ -21,6 +21,8 @@ import { GoogleGenAI, Type } from "@google/genai";
 import AppStateManager from '../state/AppStateManager';
 import ExtractionTracker from '../data/ExtractionTracker';
 import StatusManager from '../utils/status';
+import LRUCache from '../utils/LRUCache';
+import CircuitBreaker from '../utils/CircuitBreaker';
 
 // ==================== AI CLIENT INITIALIZATION ====================
 
@@ -42,6 +44,20 @@ const API_KEY = import.meta.env.VITE_GEMINI_API_KEY ||
  * Lazy-initialized AI client instance
  */
 let ai: GoogleGenAI | null = null;
+
+/**
+ * LRU Cache for PDF text with 50-page limit
+ */
+const pdfTextLRUCache = new LRUCache<number, { fullText: string, items: Array<any> }>(50);
+
+/**
+ * Circuit Breaker for AI service resilience
+ */
+const aiCircuitBreaker = new CircuitBreaker({
+    failureThreshold: 5,
+    successThreshold: 2,
+    timeout: 60000,
+});
 
 /**
  * Initialize Google Generative AI client with user-friendly error handling
@@ -67,15 +83,17 @@ Get your free API key at: https://ai.google.dev/`;
 // ==================== HELPER FUNCTIONS ====================
 
 /**
- * Gets text content from a specific PDF page, using cache if available.
+ * Gets text content from a specific PDF page, using LRU cache if available.
  * @param {number} pageNum - The page number.
  * @returns {Promise<{fullText: string, items: Array<any>}>}
  */
 async function getPageText(pageNum: number): Promise<{ fullText: string, items: Array<any> }> {
-    const state = AppStateManager.getState();
-    if (state.pdfTextCache.has(pageNum)) {
-        return state.pdfTextCache.get(pageNum)!;
+    const cached = pdfTextLRUCache.get(pageNum);
+    if (cached) {
+        return cached;
     }
+    
+    const state = AppStateManager.getState();
     if (!state.pdfDoc) {
         throw new Error('No PDF loaded');
     }
@@ -91,12 +109,7 @@ async function getPageText(pageNum: number): Promise<{ fullText: string, items: 
             }
         });
         const pageData = { fullText, items };
-        // Simple cache management
-        if (state.pdfTextCache.size >= state.maxCacheSize) {
-            const firstKey = state.pdfTextCache.keys().next().value;
-            if (firstKey) state.pdfTextCache.delete(firstKey);
-        }
-        state.pdfTextCache.set(pageNum, pageData);
+        pdfTextLRUCache.set(pageNum, pageData);
         return pageData;
     } catch (error) {
         console.error(`Error getting text from page ${pageNum}:`, error);
@@ -298,18 +311,20 @@ async function generatePICO(): Promise<void> {
             }
         };
 
-        // Call Gemini with retry logic
-        const response = await retryWithExponentialBackoff(async () => {
-            return await initializeAI().models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: [{ parts: [{ text: userPrompt }] }],
-                config: {
-                    systemInstruction: systemPrompt,
-                    responseMimeType: "application/json",
-                    responseSchema: picoSchema
-                }
-            });
-        }, 'PICO-T extraction');
+        // Call Gemini with circuit breaker and retry logic
+        const response = await aiCircuitBreaker.execute(async () => {
+            return await retryWithExponentialBackoff(async () => {
+                return await initializeAI().models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: [{ parts: [{ text: userPrompt }] }],
+                    config: {
+                        systemInstruction: systemPrompt,
+                        responseMimeType: "application/json",
+                        responseSchema: picoSchema
+                    }
+                });
+            }, 'PICO-T extraction');
+        });
 
         const jsonText = response.text;
         const data = JSON.parse(jsonText);

@@ -397,6 +397,36 @@ export const PDFRenderer = {
     toggleTableRegions: () => {
         PDFRenderer.showTableRegions = !PDFRenderer.showTableRegions;
         console.log(`Table regions ${PDFRenderer.showTableRegions ? 'enabled' : 'disabled'}`);
+    },
+
+    /**
+     * Cleanup method to prevent memory leaks
+     * 
+     * Clears canvas contexts, removes DOM elements, and releases references.
+     * Should be called when switching PDFs or unmounting the component.
+     */
+    cleanup: () => {
+        if (PDFRenderer.currentCanvas) {
+            const ctx = PDFRenderer.currentCanvas.getContext('2d');
+            if (ctx) {
+                ctx.clearRect(0, 0, PDFRenderer.currentCanvas.width, PDFRenderer.currentCanvas.height);
+            }
+            PDFRenderer.currentCanvas = null;
+        }
+
+        // Clear PDF pages container
+        const container = document.getElementById('pdf-pages');
+        if (container) {
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
+        }
+
+        // Reset visualization state
+        PDFRenderer.showBoundingBoxes = false;
+        PDFRenderer.showTableRegions = false;
+
+        console.log('PDFRenderer cleanup completed');
     }
 };
 
