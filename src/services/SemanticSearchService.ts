@@ -153,11 +153,7 @@ function expandQuery(query: string): string[] {
         terms.push(...medicalSynonyms[lowerQuery]);
     }
 
-    for (const [key, synonyms] of Object.entries(medicalSynonyms)) {
-        if (lowerQuery.includes(key) || key.includes(lowerQuery)) {
-            terms.push(...synonyms);
-        }
-    }
+    // Removed overly broad synonym expansion logic to prevent unintended matches
 
     return [...new Set(terms)]; // Remove duplicates
 }
