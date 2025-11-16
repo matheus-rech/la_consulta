@@ -65,6 +65,8 @@ import {
 } from './utils/helpers';
 import StatusManager from './utils/status';
 import MemoryManager from './utils/memory';
+import { initializeErrorBoundary, triggerCrashStateSave } from './utils/errorBoundary';
+import { checkAndOfferRecovery, triggerManualRecovery } from './utils/errorRecovery';
 
 // ==================== DEPENDENCY INJECTION ====================
 
@@ -644,7 +646,10 @@ function exposeWindowAPI() {
         toggleTableRegions,
 
         // New: Multi-Agent Pipeline (1)
-        runFullAIPipeline
+        runFullAIPipeline,
+
+        triggerCrashStateSave,
+        triggerManualRecovery
     };
 
     // Also expose individual functions for backward compatibility with HTML onclick handlers
@@ -661,6 +666,9 @@ function exposeWindowAPI() {
 async function initializeApp() {
     try {
         console.log('Initializing Clinical Extractor...');
+
+        initializeErrorBoundary();
+        console.log('✓ Error Boundary initialized');
 
         // 1. Set up module dependencies
         setupDependencies();
@@ -685,7 +693,10 @@ async function initializeApp() {
         exposeWindowAPI();
         console.log('✓ Window API exposed');
 
-        // 6. Show initial status
+        await checkAndOfferRecovery();
+        console.log('✓ Crash recovery check complete');
+
+        // 7. Show initial status
         StatusManager.show('Clinical Extractor Ready. Load a PDF to begin.', 'info');
         console.log('✓ Clinical Extractor initialization complete');
 

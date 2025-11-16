@@ -115,13 +115,14 @@ async function getAllPdfText(): Promise<string | null> {
 
 /**
  * Calls the Gemini API with Google Search grounding.
+ * Includes retry logic with exponential backoff for rate limits.
  * @param {string} systemInstruction - The system instruction.
  * @param {string} userPrompt - The user query.
  * @param {object} responseSchema - The JSON schema for the response.
  * @returns {Promise<string>} - The text content from the API response.
  */
 async function callGeminiWithSearch(systemInstruction: string, userPrompt: string, responseSchema: any): Promise<string> {
-    try {
+    return await retryWithExponentialBackoff(async () => {
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: [{ parts: [{ text: userPrompt }] }],
@@ -133,10 +134,7 @@ async function callGeminiWithSearch(systemInstruction: string, userPrompt: strin
             }
         });
         return response.text;
-    } catch (error) {
-        console.error("Gemini Search API call failed:", error);
-        throw error;
-    }
+    }, 'Gemini Search API call');
 }
 
 /**
@@ -153,6 +151,95 @@ function blobToBase64(blob: Blob): Promise<string> {
         reader.onerror = reject;
         reader.readAsDataURL(blob);
     });
+}
+
+// ==================== RETRY LOGIC WITH EXPONENTIAL BACKOFF ====================
+
+/**
+ * Retry configuration for API calls
+ */
+const RETRY_CONFIG = {
+    maxAttempts: 3,
+    delays: [2000, 4000, 8000], // 2s, 4s, 8s
+    retryableStatusCodes: [429, 500, 502, 503, 504]
+};
+
+/**
+ * Checks if an error is retryable (429 or 5xx errors)
+ * @param error - The error to check
+ * @returns True if the error should trigger a retry
+ */
+function isRetryableError(error: any): boolean {
+    if (error?.status) {
+        return RETRY_CONFIG.retryableStatusCodes.includes(error.status);
+    }
+    
+    const errorMessage = error?.message?.toLowerCase() || '';
+    if (errorMessage.includes('rate limit') || 
+        errorMessage.includes('too many requests') ||
+        errorMessage.includes('429')) {
+        return true;
+    }
+    
+    return false;
+}
+
+/**
+ * Delays execution for a specified number of milliseconds
+ * @param ms - Milliseconds to delay
+ */
+function delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Wraps an async function with exponential backoff retry logic
+ * Retries on 429 (rate limit) and 5xx server errors
+ * 
+ * @param fn - Async function to retry
+ * @param context - Description of the operation for user feedback
+ * @returns Promise that resolves with the function result
+ */
+async function retryWithExponentialBackoff<T>(
+    fn: () => Promise<T>,
+    context: string = 'API call'
+): Promise<T> {
+    let lastError: any;
+    
+    for (let attempt = 0; attempt < RETRY_CONFIG.maxAttempts; attempt++) {
+        try {
+            return await fn();
+        } catch (error: any) {
+            lastError = error;
+            
+            const isLastAttempt = attempt === RETRY_CONFIG.maxAttempts - 1;
+            
+            if (!isRetryableError(error)) {
+                throw error;
+            }
+            
+            if (isLastAttempt) {
+                console.error(`${context} failed after ${RETRY_CONFIG.maxAttempts} attempts`);
+                throw error;
+            }
+            
+            const delayMs = RETRY_CONFIG.delays[attempt];
+            const delaySec = delayMs / 1000;
+            
+            console.warn(`${context} failed (attempt ${attempt + 1}/${RETRY_CONFIG.maxAttempts}). Retrying in ${delaySec}s...`);
+            console.warn('Error:', error.message || error);
+            
+            StatusManager.show(
+                `AI service is busy, retrying in ${delaySec} seconds... (attempt ${attempt + 1}/${RETRY_CONFIG.maxAttempts})`,
+                'warning',
+                delayMs
+            );
+            
+            await delay(delayMs);
+        }
+    }
+    
+    throw lastError;
 }
 
 // ==================== AI EXTRACTION FUNCTIONS ====================
@@ -199,16 +286,18 @@ async function generatePICO(): Promise<void> {
             }
         };
 
-        // Call Gemini directly
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: [{ parts: [{ text: userPrompt }] }],
-            config: {
-                systemInstruction: systemPrompt,
-                responseMimeType: "application/json",
-                responseSchema: picoSchema
-            }
-        });
+        // Call Gemini with retry logic
+        const response = await retryWithExponentialBackoff(async () => {
+            return await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: [{ parts: [{ text: userPrompt }] }],
+                config: {
+                    systemInstruction: systemPrompt,
+                    responseMimeType: "application/json",
+                    responseSchema: picoSchema
+                }
+            });
+        }, 'PICO-T extraction');
 
         const jsonText = response.text;
         const data = JSON.parse(jsonText);
@@ -279,13 +368,15 @@ async function generateSummary(): Promise<void> {
         const systemPrompt = "You are an expert clinical research assistant. Your task is to read the provided clinical study text and write a concise summary (2-3 paragraphs) focusing on the key findings, outcomes, and any identified predictors of those outcomes.";
         const userPrompt = `Please summarize the following clinical study text:\n\n${documentText}`;
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-flash-latest',
-            contents: [{ parts: [{ text: userPrompt }] }],
-            config: {
-                systemInstruction: systemPrompt,
-            }
-        });
+        const response = await retryWithExponentialBackoff(async () => {
+            return await ai.models.generateContent({
+                model: 'gemini-flash-latest',
+                contents: [{ parts: [{ text: userPrompt }] }],
+                config: {
+                    systemInstruction: systemPrompt,
+                }
+            });
+        }, 'Summary generation');
 
         const summaryText = response.text;
 
@@ -374,15 +465,17 @@ async function validateFieldWithAI(fieldId: string): Promise<void> {
             required: ["is_supported", "supporting_quote", "confidence_score"]
         };
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
-            contents: [{ parts: [{ text: userPrompt }] }],
-            config: {
-                systemInstruction: systemPrompt,
-                responseMimeType: "application/json",
-                responseSchema: validationSchema
-            }
-        });
+        const response = await retryWithExponentialBackoff(async () => {
+            return await ai.models.generateContent({
+                model: 'gemini-2.5-pro',
+                contents: [{ parts: [{ text: userPrompt }] }],
+                config: {
+                    systemInstruction: systemPrompt,
+                    responseMimeType: "application/json",
+                    responseSchema: validationSchema
+                }
+            });
+        }, 'Field validation');
 
         const jsonText = response.text;
         const validation = JSON.parse(jsonText);
@@ -510,15 +603,17 @@ async function handleExtractTables(): Promise<void> {
             }
         };
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
-            contents: documentText,
-            config: {
-                systemInstruction: systemPrompt,
-                responseMimeType: "application/json",
-                responseSchema: tableSchema
-            }
-        });
+        const response = await retryWithExponentialBackoff(async () => {
+            return await ai.models.generateContent({
+                model: 'gemini-2.5-pro',
+                contents: documentText,
+                config: {
+                    systemInstruction: systemPrompt,
+                    responseMimeType: "application/json",
+                    responseSchema: tableSchema
+                }
+            });
+        }, 'Table extraction');
 
         const jsonText = response.text;
         const result = JSON.parse(jsonText);
@@ -631,10 +726,12 @@ async function handleImageAnalysis(): Promise<void> {
             text: prompt
         };
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: { parts: [imagePart, textPart] },
-        });
+        const response = await retryWithExponentialBackoff(async () => {
+            return await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: { parts: [imagePart, textPart] },
+            });
+        }, 'Image analysis');
 
         if (resultsContainer) resultsContainer.innerText = response.text;
 
@@ -675,13 +772,15 @@ async function handleDeepAnalysis(): Promise<void> {
 
         const fullPrompt = `Based on the following document text, please answer this question: ${prompt}\n\nDOCUMENT TEXT:\n${documentText}`;
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
-            contents: fullPrompt,
-            config: {
-                thinkingConfig: { thinkingBudget: 32768 }
-            }
-        });
+        const response = await retryWithExponentialBackoff(async () => {
+            return await ai.models.generateContent({
+                model: 'gemini-2.5-pro',
+                contents: fullPrompt,
+                config: {
+                    thinkingConfig: { thinkingBudget: 32768 }
+                }
+            });
+        }, 'Deep analysis');
 
         if (resultsContainer) resultsContainer.innerText = response.text;
 
