@@ -443,9 +443,15 @@ export const BackendProxyService = {
     },
 
     /**
-     * Create a CORS proxy URL
+     * Create a CORS proxy URL.
+     * @param targetURL The target URL to proxy.
+     * @param proxyURL The CORS proxy URL. Must be explicitly provided; no default is set.
+     * @throws Error if proxyURL is not provided.
      */
-    createCORSProxyURL: (targetURL: string, proxyURL = 'https://corsproxy.io/?'): string => {
+    createCORSProxyURL: (targetURL: string, proxyURL: string): string => {
+        if (!proxyURL) {
+            throw new Error('CORS proxy URL must be explicitly provided. No default is set.');
+        }
         return `${proxyURL}${encodeURIComponent(targetURL)}`;
     },
 
