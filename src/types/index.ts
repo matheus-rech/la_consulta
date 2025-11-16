@@ -12,6 +12,8 @@
 
 // Import citation provenance types
 import type { TextChunk, CitationMap } from '../services/CitationService';
+// Import text structure types
+import type { Section, Paragraph } from '../services/TextStructureService';
 
 // ==================== EXTRACTION TYPES ====================
 
@@ -181,10 +183,32 @@ export interface AppState {
    * Each table includes headers, rows, column positions, and bounding box
    */
   extractedTables?: any[];
+
+  // ==================== NEW: TEXT STRUCTURE (SECTIONS & PARAGRAPHS) 📚 ====================
+  /**
+   * Structured sections detected from PDF (Abstract, Methods, Results, etc.)
+   * Each section contains paragraph IDs and sentence indices
+   */
+  sections?: Section[];
+  /**
+   * Structured paragraphs grouped from sentence chunks
+   * Each paragraph contains sentence indices and bounding box
+   */
+  paragraphs?: Paragraph[];
+  /**
+   * Map from chunk index to paragraph ID for fast lookup
+   */
+  chunkIndexToParagraphId?: Map<number, number>;
+  /**
+   * Map from paragraph ID to section ID for fast lookup
+   */
+  paragraphIdToSectionId?: Map<number, number>;
 }
 
 // Re-export citation types for convenience
 export type { TextChunk, Citation, CitationMap, BoundingBox, AIResponse } from '../services/CitationService';
+// Re-export text structure types for convenience
+export type { Section, Paragraph, StructuredText } from '../services/TextStructureService';
 
 // ==================== VALIDATION TYPES ====================
 

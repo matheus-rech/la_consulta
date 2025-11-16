@@ -24,6 +24,7 @@ import { PDFConfig } from '../config';
 import PDFRenderer from './PDFRenderer';
 import TextSelection from './TextSelection';
 import CitationService from '../services/CitationService';
+import TextStructureService from '../services/TextStructureService';
 
 /**
  * PDF.js library types
@@ -198,6 +199,21 @@ const PDFLoader = {
         
         console.log(`✅ Indexed ${textChunks.length} text chunks for search and citations`);
         StatusManager.show(`Indexed ${textChunks.length} sentences for search & citations`, 'success', 3000);
+        
+        try {
+          const structuredText = TextStructureService.build(textChunks);
+          
+          AppStateManager.setState({
+            sections: structuredText.sections,
+            paragraphs: structuredText.paragraphs,
+            chunkIndexToParagraphId: structuredText.chunkIndexToParagraphId,
+            paragraphIdToSectionId: structuredText.paragraphIdToSectionId
+          });
+          
+          console.log(`📚 Built ${structuredText.sections.length} sections and ${structuredText.paragraphs.length} paragraphs`);
+        } catch (error) {
+          console.error('⚠️ Failed to build text structure:', error);
+        }
       } catch (error) {
         console.error('⚠️ Failed to extract text chunks:', error);
         StatusManager.show('Warning: Text indexing failed, search may not work', 'warning', 5000);
