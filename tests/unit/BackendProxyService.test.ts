@@ -197,7 +197,7 @@ describe('BackendProxyService', () => {
 
             await expect(BackendProxyService.get('/users')).rejects.toThrow();
             
-            expect(global.fetch).toHaveBeenCalledTimes(2);
+            expect(global.fetch).toHaveBeenCalledTimes(3);
         });
 
         it('should handle non-JSON responses', async () => {
