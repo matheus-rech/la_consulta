@@ -128,6 +128,8 @@ export const AnnotationService = {
             layer.annotations.push(newAnnotation);
         }
 
+        AnnotationService.saveToStorage();
+
         return newAnnotation;
     },
 
@@ -411,6 +413,8 @@ export const AnnotationService = {
 
         AnnotationService.renderAnnotations(annotation.pageNum);
 
+        AnnotationService.saveToStorage();
+
         return true;
     },
 
@@ -426,6 +430,8 @@ export const AnnotationService = {
                 ctx.clearRect(0, 0, layer.canvas.width, layer.canvas.height);
             }
         });
+
+        AnnotationService.saveToStorage();
     },
 
     /**
@@ -464,9 +470,80 @@ export const AnnotationService = {
                 AnnotationService.renderAnnotations(pageNum);
             });
 
+            AnnotationService.saveToStorage();
+
             return true;
         } catch (error) {
             console.error('Failed to import annotations:', error);
+            return false;
+        }
+    },
+
+    /**
+     * Save annotations to localStorage
+     * Persists all annotations for recovery on page reload
+     */
+    saveToStorage: (): void => {
+        try {
+            const documentName = AppStateManager.getState().documentName || 'unknown';
+            const storageKey = `clinical_annotations_${documentName}`;
+            
+            const storageData = {
+                version: '1.0',
+                documentName,
+                saveDate: new Date().toISOString(),
+                annotations: AnnotationService.annotations,
+            };
+            
+            localStorage.setItem(storageKey, JSON.stringify(storageData));
+            console.log(`💾 Saved ${AnnotationService.annotations.length} annotations to localStorage`);
+        } catch (error) {
+            console.error('Failed to save annotations to localStorage:', error);
+        }
+    },
+
+    /**
+     * Load annotations from localStorage
+     * Restores annotations for the current document
+     */
+    loadFromStorage: (documentName?: string): boolean => {
+        try {
+            const docName = documentName || AppStateManager.getState().documentName || 'unknown';
+            const storageKey = `clinical_annotations_${docName}`;
+            
+            const saved = localStorage.getItem(storageKey);
+            if (!saved) {
+                console.log('No saved annotations found for this document');
+                return false;
+            }
+
+            const data = JSON.parse(saved);
+            if (!data.annotations || !Array.isArray(data.annotations)) {
+                console.warn('Invalid annotation data in localStorage');
+                return false;
+            }
+
+            AnnotationService.annotations = data.annotations;
+            
+            // Rebuild layer annotations
+            AnnotationService.annotations.forEach(annotation => {
+                const layer = AnnotationService.layers.get(annotation.pageNum);
+                if (layer && !layer.annotations.find(a => a.id === annotation.id)) {
+                    layer.annotations.push(annotation);
+                }
+            });
+
+            // Re-render all layers that have annotations
+            AnnotationService.layers.forEach((layer, pageNum) => {
+                if (layer.annotations.length > 0) {
+                    AnnotationService.renderAnnotations(pageNum);
+                }
+            });
+
+            console.log(`✅ Loaded ${AnnotationService.annotations.length} annotations from localStorage (saved: ${data.saveDate})`);
+            return true;
+        } catch (error) {
+            console.error('Failed to load annotations from localStorage:', error);
             return false;
         }
     },
