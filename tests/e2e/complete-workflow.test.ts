@@ -17,7 +17,6 @@ import { PDFLoader } from '../../src/pdf/PDFLoader';
 import PDFRenderer from '../../src/pdf/PDFRenderer';
 import ExtractionTracker from '../../src/data/ExtractionTracker';
 import FormManager from '../../src/forms/FormManager';
-import ExportManager from '../../src/services/ExportManager';
 import StatusManager from '../../src/utils/status';
 
 describe('Complete User Workflow E2E Test', () => {
