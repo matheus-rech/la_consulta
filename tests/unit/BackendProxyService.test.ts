@@ -453,7 +453,7 @@ describe('BackendProxyService', () => {
     describe('CORS proxy', () => {
         it('should create CORS proxy URL', () => {
             const targetURL = 'https://api.example.com/data';
-            const proxyURL = BackendProxyService.createCORSProxyURL(targetURL);
+            const proxyURL = BackendProxyService.createCORSProxyURL(targetURL, 'https://corsproxy.io/?');
 
             expect(proxyURL).toContain('corsproxy.io');
             expect(proxyURL).toContain(encodeURIComponent(targetURL));
