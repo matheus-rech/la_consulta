@@ -8,7 +8,8 @@ global.window.pdfjsLib = {
   getDocument: jest.fn(),
 };
 
-global.localStorage = {
+// Create proper jest mock functions for localStorage
+const localStorageMock = {
   getItem: jest.fn(),
   setItem: jest.fn(),
   removeItem: jest.fn(),
@@ -16,3 +17,5 @@ global.localStorage = {
   length: 0,
   key: jest.fn(),
 };
+
+global.localStorage = localStorageMock as any;

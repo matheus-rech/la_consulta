@@ -2,7 +2,8 @@ import AppStateManager from '../../src/state/AppStateManager';
 
 describe('AppStateManager', () => {
   beforeEach(() => {
-    AppStateManager['state'] = {
+    // Reset to a clean state using the public API
+    AppStateManager.setState({
       pdfDoc: null,
       currentPage: 1,
       totalPages: 0,
@@ -23,8 +24,7 @@ describe('AppStateManager', () => {
       activeCitationIndex: null,
       extractedFigures: [],
       extractedTables: [],
-    };
-    AppStateManager['subscribers'] = [];
+    });
   });
 
   describe('getState', () => {
