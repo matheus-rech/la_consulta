@@ -250,9 +250,13 @@ class AppStateManagerClass {
    * Test-only method to reset state and clear subscribers.
    * This is explicitly named to indicate it's for testing purposes only.
    * 
+   * Calls reset(false) to clear both state and subscribers.
+   * When preserveSubscribers is false, the reset method creates a new empty Set for subscribers.
+   * 
    * @internal
    */
   __resetForTesting(): void {
+    // Pass false to reset() to clear subscribers in addition to state
     this.reset(false);
   }
 }
