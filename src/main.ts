@@ -744,8 +744,8 @@ function setAnnotationTool(tool: string) {
     const colorSelect = document.getElementById('annotation-color') as HTMLSelectElement;
     const color = colorSelect ? colorSelect.value : 'yellow';
     
-    AnnotationService.setCurrentTool(tool as any);
-    AnnotationService.setCurrentColor(color as any);
+    AnnotationService.setTool(tool as any);
+    AnnotationService.setColor(color as any);
     
     StatusManager.show(`Annotation tool: ${tool} (${color})`, 'info');
 }
