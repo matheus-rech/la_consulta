@@ -51,9 +51,9 @@ interface CacheEntry {
     ttl: number;
 }
 
-interface QueuedRequest {
+interface QueuedRequest<T = any> {
     request: ProxyRequest;
-    resolve: (value: ProxyResponse) => void;
+    resolve: (value: ProxyResponse<T>) => void;
     reject: (error: Error) => void;
     timestamp: number;
 }
