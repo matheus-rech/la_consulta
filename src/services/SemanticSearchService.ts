@@ -197,7 +197,6 @@ export const SemanticSearchService = {
         }
 
         const searchTerms = semanticExpansion ? expandQuery(query) : [query];
-        console.log(`🔍 Semantic search for: "${query}"`, searchTerms.length > 1 ? `(expanded to ${searchTerms.length} terms)` : '');
 
         const results: SemanticSearchResult[] = [];
         const allTexts = textChunks.map(c => c.text);
@@ -276,7 +275,6 @@ export const SemanticSearchService = {
 
         SemanticSearchService.currentResults = limitedResults;
 
-        console.log(`✅ Found ${limitedResults.length} semantic search results`);
         return limitedResults;
     },
 
@@ -312,7 +310,6 @@ export const SemanticSearchService = {
      */
     clearHistory: (): void => {
         SemanticSearchService.searchHistory = [];
-        console.log('🗑️ Search history cleared');
     },
 
     /**

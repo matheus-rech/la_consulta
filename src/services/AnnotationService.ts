@@ -107,7 +107,6 @@ export const AnnotationService = {
         };
         AnnotationService.layers.set(pageNum, layer);
 
-        console.log(`📝 Initialized annotation layer for page ${pageNum}`);
         return canvas;
     },
 
@@ -129,7 +128,6 @@ export const AnnotationService = {
             layer.annotations.push(newAnnotation);
         }
 
-        console.log(`✅ Added ${annotation.type} annotation on page ${annotation.pageNum}`);
         return newAnnotation;
     },
 
@@ -240,8 +238,6 @@ export const AnnotationService = {
         layer.annotations.forEach(annotation => {
             AnnotationService.renderAnnotation(ctx, annotation);
         });
-
-        console.log(`🎨 Rendered ${layer.annotations.length} annotations on page ${pageNum}`);
     },
 
     /**
@@ -396,7 +392,6 @@ export const AnnotationService = {
         const pageNum = AnnotationService.annotations[index].pageNum;
         AnnotationService.renderAnnotations(pageNum);
 
-        console.log(`✏️ Updated annotation ${id}`);
         return true;
     },
 
@@ -416,7 +411,6 @@ export const AnnotationService = {
 
         AnnotationService.renderAnnotations(annotation.pageNum);
 
-        console.log(`🗑️ Deleted annotation ${id}`);
         return true;
     },
 
@@ -432,7 +426,6 @@ export const AnnotationService = {
                 ctx.clearRect(0, 0, layer.canvas.width, layer.canvas.height);
             }
         });
-        console.log('🗑️ Cleared all annotations');
     },
 
     /**
@@ -471,7 +464,6 @@ export const AnnotationService = {
                 AnnotationService.renderAnnotations(pageNum);
             });
 
-            console.log(`📥 Imported ${data.annotations.length} annotations`);
             return true;
         } catch (error) {
             console.error('Failed to import annotations:', error);
@@ -484,7 +476,6 @@ export const AnnotationService = {
      */
     setTool: (tool: AnnotationType): void => {
         AnnotationService.currentTool = tool;
-        console.log(`🔧 Tool changed to: ${tool}`);
     },
 
     /**
@@ -492,7 +483,6 @@ export const AnnotationService = {
      */
     setColor: (color: AnnotationColor): void => {
         AnnotationService.currentColor = color;
-        console.log(`🎨 Color changed to: ${color}`);
     },
 
     /**
@@ -500,7 +490,6 @@ export const AnnotationService = {
      */
     setAuthor: (author: string): void => {
         AnnotationService.currentAuthor = author;
-        console.log(`👤 Author set to: ${author}`);
     },
 
     /**
@@ -513,7 +502,6 @@ export const AnnotationService = {
             }
         });
         AnnotationService.layers.clear();
-        console.log('🧹 Annotation layers cleaned up');
     },
 };
 
