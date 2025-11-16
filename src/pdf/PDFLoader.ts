@@ -23,6 +23,7 @@ import SecurityUtils from '../utils/security';
 import { PDFConfig } from '../config';
 import PDFRenderer from './PDFRenderer';
 import TextSelection from './TextSelection';
+import CitationService from '../services/CitationService';
 
 /**
  * PDF.js library types
@@ -187,6 +188,25 @@ const PDFLoader = {
         isProcessing: false,
         pdfTextCache: new Map() // Clear cache on new load
       });
+
+      console.log('📖 Extracting text chunks for semantic search and citations...');
+      StatusManager.show('Indexing document text...', 'info');
+      
+      try {
+        const textChunks = await CitationService.extractAllTextChunks(pdfDoc);
+        const citationMap = CitationService.buildCitationMap(textChunks);
+        
+        AppStateManager.setState({
+          textChunks,
+          citationMap
+        });
+        
+        console.log(`✅ Indexed ${textChunks.length} text chunks for search and citations`);
+        StatusManager.show(`Indexed ${textChunks.length} sentences for search & citations`, 'success', 3000);
+      } catch (error) {
+        console.error('⚠️ Failed to extract text chunks:', error);
+        StatusManager.show('Warning: Text indexing failed, search may not work', 'warning', 5000);
+      }
 
       // Update DOM elements
       const totalPagesElement = document.getElementById('total-pages');

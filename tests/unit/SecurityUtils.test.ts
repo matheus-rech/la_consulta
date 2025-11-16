@@ -129,7 +129,7 @@ describe('SecurityUtils', () => {
       const incomplete = {
         id: 'ext_123',
         text: 'Some text',
-        // Missing: fieldName, coordinates, page
+        // Missing required fields: timestamp, fieldName, coordinates, page, method, documentName
       };
 
       // validateExtraction returns falsy value (false or undefined) for incomplete objects
