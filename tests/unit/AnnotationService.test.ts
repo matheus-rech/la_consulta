@@ -10,16 +10,21 @@
 import AnnotationService from '../../src/services/AnnotationService';
 import type { Annotation, AnnotationType, AnnotationColor } from '../../src/services/AnnotationService';
 
+// Helper to reset AnnotationService state
+function resetAnnotationService() {
+    AnnotationService.annotations = [];
+    AnnotationService.layers.clear();
+    AnnotationService.currentTool = 'highlight';
+    AnnotationService.currentColor = 'yellow';
+    AnnotationService.currentAuthor = 'Anonymous';
+}
+
 describe('AnnotationService', () => {
     let mockContainer: HTMLElement;
     let mockCanvas: HTMLCanvasElement;
 
     beforeEach(() => {
-        AnnotationService.annotations = [];
-        AnnotationService.layers.clear();
-        AnnotationService.currentTool = 'highlight';
-        AnnotationService.currentColor = 'yellow';
-        AnnotationService.currentAuthor = 'Anonymous';
+        resetAnnotationService();
 
         mockContainer = document.createElement('div');
         mockContainer.style.width = '800px';
