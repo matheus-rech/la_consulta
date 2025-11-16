@@ -89,7 +89,7 @@ function createRecoveryModal(): Promise<RecoveryModalResult> {
       </div>
 
       <div style="display: flex; gap: 12px; margin-top: 24px;">
-        <button id="recovery-accept" style="
+        <button type="button" id="recovery-accept" style="
           flex: 1;
           padding: 14px 24px;
           background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
@@ -100,10 +100,10 @@ function createRecoveryModal(): Promise<RecoveryModalResult> {
           font-size: 15px;
           font-weight: 600;
           transition: transform 0.2s, box-shadow 0.2s;
-        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76, 175, 80, 0.4)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+        ">
           ✓ Restore Session
         </button>
-        <button id="recovery-decline" style="
+        <button type="button" id="recovery-decline" style="
           padding: 14px 24px;
           background: rgba(255, 255, 255, 0.1);
           color: #ccc;
@@ -112,7 +112,7 @@ function createRecoveryModal(): Promise<RecoveryModalResult> {
           cursor: pointer;
           font-size: 15px;
           transition: background 0.2s;
-        " onmouseover="this.style.background='rgba(255, 255, 255, 0.15)';" onmouseout="this.style.background='rgba(255, 255, 255, 0.1)';">
+        ">
           Start Fresh
         </button>
       </div>
@@ -134,16 +134,38 @@ function createRecoveryModal(): Promise<RecoveryModalResult> {
     `;
     document.head.appendChild(style);
 
-    document.getElementById('recovery-accept')?.addEventListener('click', () => {
+    // Get button references
+    const acceptBtn = document.getElementById('recovery-accept');
+    const declineBtn = document.getElementById('recovery-decline');
+
+    // Add click event listeners
+    acceptBtn?.addEventListener('click', () => {
       modal.remove();
       style.remove();
       resolve({ accepted: true });
     });
 
-    document.getElementById('recovery-decline')?.addEventListener('click', () => {
+    declineBtn?.addEventListener('click', () => {
       modal.remove();
       style.remove();
       resolve({ accepted: false });
+    });
+
+    // Add hover effects via event listeners
+    acceptBtn?.addEventListener('mouseover', () => {
+      acceptBtn.style.transform = 'translateY(-2px)';
+      acceptBtn.style.boxShadow = '0 4px 12px rgba(76, 175, 80, 0.4)';
+    });
+    acceptBtn?.addEventListener('mouseout', () => {
+      acceptBtn.style.transform = '';
+      acceptBtn.style.boxShadow = '';
+    });
+
+    declineBtn?.addEventListener('mouseover', () => {
+      declineBtn.style.background = 'rgba(255, 255, 255, 0.15)';
+    });
+    declineBtn?.addEventListener('mouseout', () => {
+      declineBtn.style.background = 'rgba(255, 255, 255, 0.1)';
     });
   });
 }

@@ -201,7 +201,7 @@ function createErrorModal(errorMessage: string, errorStack: string): void {
       <pre style="margin: 8px 0; white-space: pre-wrap; word-break: break-word; font-size: 11px; color: #888;">${escapeHtml(errorStack)}</pre>
     </details>
     <div style="display: flex; gap: 12px; margin-top: 24px;">
-      <button id="error-modal-reload" style="
+      <button type="button" id="error-modal-reload" style="
         flex: 1;
         padding: 12px 24px;
         background: #4CAF50;
@@ -214,7 +214,7 @@ function createErrorModal(errorMessage: string, errorStack: string): void {
       ">
         Reload & Recover
       </button>
-      <button id="error-modal-close" style="
+      <button type="button" id="error-modal-close" style="
         padding: 12px 24px;
         background: #666;
         color: white;

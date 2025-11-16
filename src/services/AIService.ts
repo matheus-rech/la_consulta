@@ -170,10 +170,14 @@ const RETRY_CONFIG = {
  * @returns True if the error should trigger a retry
  */
 function isRetryableError(error: any): boolean {
-    if (error?.status) {
-        return RETRY_CONFIG.retryableStatusCodes.includes(error.status);
+    // Check multiple possible status code locations in error object
+    const status = error?.status || error?.response?.status || error?.statusCode;
+    
+    if (status) {
+        return RETRY_CONFIG.retryableStatusCodes.includes(status);
     }
     
+    // Fallback to checking error message for rate limit indicators
     const errorMessage = error?.message?.toLowerCase() || '';
     if (errorMessage.includes('rate limit') || 
         errorMessage.includes('too many requests') ||
