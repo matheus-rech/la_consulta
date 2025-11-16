@@ -122,7 +122,7 @@ $ npm view xlsx versions --json | tail -20
 ```
 
 **Security Vulnerabilities:**
-The current version (0.18.5) has 1 high severity vulnerability:
+The current version (0.18.5) has 2 high severity vulnerabilities:
 - Prototype Pollution in sheetJS (GHSA-4r6h-8v6p-xvw6)
 - SheetJS Regular Expression Denial of Service (ReDoS) (GHSA-5pgg-2g8v-p4x9)
 
