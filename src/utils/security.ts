@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { Extraction, ExtractionMethod, ValidationResult } from '../types';
+import type { Extraction, ValidationResult } from '../types';
+import { EXTRACTION_METHODS } from '../types';
 
 /**
  * Security utilities for sanitizing inputs, validating data, and encoding/decoding
@@ -28,16 +29,6 @@ const SecurityUtils = {
    * @returns True if extraction is valid
    */
   validateExtraction: (extraction: any): extraction is Extraction => {
-    // Valid extraction methods
-    const validMethods: ExtractionMethod[] = [
-      'manual',
-      'gemini-pico',
-      'gemini-summary',
-      'gemini-metadata',
-      'gemini-table',
-      'gemini-deep',
-    ];
-
     return (
       extraction &&
       extraction.fieldName &&
@@ -46,7 +37,7 @@ const SecurityUtils = {
       extraction.page >= 0 && // Page 0 for AI
       extraction.method &&
       typeof extraction.method === 'string' &&
-      validMethods.includes(extraction.method as ExtractionMethod)
+      EXTRACTION_METHODS.includes(extraction.method as ExtractionMethod)
     );
   },
 
