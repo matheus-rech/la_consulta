@@ -32,7 +32,8 @@ export interface Coordinates {
 }
 
 /**
- * Method used for data extraction.
+ * Constant array of all valid extraction methods.
+ * Used to derive the ExtractionMethod type and for runtime validation.
  * - 'manual': User-selected text from PDF
  * - 'gemini-pico': AI-generated PICO analysis
  * - 'gemini-summary': AI-generated summary
@@ -40,13 +41,20 @@ export interface Coordinates {
  * - 'gemini-table': AI-extracted table data
  * - 'gemini-deep': Deep AI analysis
  */
-export type ExtractionMethod =
-  | 'manual'
-  | 'gemini-pico'
-  | 'gemini-summary'
-  | 'gemini-metadata'
-  | 'gemini-table'
-  | 'gemini-deep';
+export const EXTRACTION_METHODS = [
+  'manual',
+  'gemini-pico',
+  'gemini-summary',
+  'gemini-metadata',
+  'gemini-table',
+  'gemini-deep',
+] as const;
+
+/**
+ * Method used for data extraction.
+ * Derived from EXTRACTION_METHODS constant to ensure consistency.
+ */
+export type ExtractionMethod = typeof EXTRACTION_METHODS[number];
 
 /**
  * Represents a single data extraction from the PDF or AI analysis.
