@@ -60,7 +60,11 @@ const MemoryManager = {
     // Clean up PDFRenderer resources
     // Note: We use a dynamic import check to avoid circular dependencies
     if (typeof window !== 'undefined' && (window as any).PDFRenderer) {
-      (window as any).PDFRenderer.cleanup();
+      try {
+        (window as any).PDFRenderer.cleanup();
+      } catch (err) {
+        console.error('PDFRenderer cleanup failed:', err);
+      }
     }
 
     console.log('Cleanup performed (simplified)');
