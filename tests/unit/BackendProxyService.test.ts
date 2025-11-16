@@ -197,7 +197,8 @@ describe('BackendProxyService', () => {
 
             await expect(BackendProxyService.get('/users')).rejects.toThrow();
             
-            expect(global.fetch).toHaveBeenCalledTimes(2);
+            // With retryAttempts: 2, there should be 1 initial + 2 retries = 3 total
+            expect(global.fetch).toHaveBeenCalledTimes(3);
         });
 
         it('should handle non-JSON responses', async () => {
@@ -221,7 +222,8 @@ describe('BackendProxyService', () => {
                 ok: false,
                 status: 404,
                 statusText: 'Not Found',
-                headers: new Map(),
+                headers: new Map([['content-type', 'application/json']]),
+                json: async () => ({ error: 'Not found' }),
             };
 
             (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
@@ -416,7 +418,7 @@ describe('BackendProxyService', () => {
         });
 
         it('should handle batch failures gracefully', async () => {
-            BackendProxyService.configure({ retryAttempts: 1 });
+            BackendProxyService.configure({ retryAttempts: 0 });
             
             (global.fetch as jest.Mock)
                 .mockResolvedValueOnce({
@@ -451,12 +453,12 @@ describe('BackendProxyService', () => {
     });
 
     describe('CORS proxy', () => {
-        it('should create CORS proxy URL', () => {
+        it('should throw error when proxy URL not provided', () => {
             const targetURL = 'https://api.example.com/data';
-            const proxyURL = BackendProxyService.createCORSProxyURL(targetURL);
-
-            expect(proxyURL).toContain('corsproxy.io');
-            expect(proxyURL).toContain(encodeURIComponent(targetURL));
+            
+            expect(() => {
+                BackendProxyService.createCORSProxyURL(targetURL);
+            }).toThrow('CORS proxy URL must be explicitly provided');
         });
 
         it('should use custom proxy URL', () => {

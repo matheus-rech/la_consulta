@@ -47,6 +47,12 @@ export interface SearchOptions {
 function levenshteinDistance(str1: string, str2: string): number {
     const len1 = str1.length;
     const len2 = str2.length;
+
+    // Prevent performance issues with very long strings
+    if (len1 * len2 > 10000) {
+        return len1 + len2; // Return max distance to skip fuzzy matching
+    }
+
     const matrix: number[][] = [];
 
     for (let i = 0; i <= len1; i++) {
@@ -149,14 +155,9 @@ function expandQuery(query: string): string[] {
     const terms = [query];
     const lowerQuery = query.toLowerCase();
 
+    // Only expand if the query exactly matches a key in the synonym map
     if (medicalSynonyms[lowerQuery]) {
         terms.push(...medicalSynonyms[lowerQuery]);
-    }
-
-    for (const [key, synonyms] of Object.entries(medicalSynonyms)) {
-        if (lowerQuery.includes(key) || key.includes(lowerQuery)) {
-            terms.push(...synonyms);
-        }
     }
 
     return [...new Set(terms)]; // Remove duplicates
@@ -230,14 +231,18 @@ export const SemanticSearchService = {
 
                 if (term.split(/\s+/).length === 1 && exactMatches.length === 0) {
                     const words = chunk.text.split(/\s+/);
+                    let offset = 0;
                     for (let i = 0; i < words.length; i++) {
-                        const word = words[i].replace(/[^\w]/g, '');
+                        const rawWord = words[i];
+                        const word = rawWord.replace(/[^\w-]/g, '');
                         const similarity = calculateSimilarity(term, word);
                         
-                        if (similarity >= fuzzyThreshold && similarity < 1.0) {
-                            const wordStart = chunk.text.indexOf(words[i]);
-                            const wordEnd = wordStart + words[i].length;
-                            
+                        // Find the position of this word instance starting from offset
+                        const wordStart = chunk.text.indexOf(rawWord, offset);
+                        const wordEnd = wordStart + rawWord.length;
+                        offset = wordEnd; // Move offset past this word
+                        
+                        if (similarity >= fuzzyThreshold && similarity < 1.0 && wordStart !== -1) {
                             const score = similarity * 5;
                             if (score > bestScore) {
                                 bestScore = score;

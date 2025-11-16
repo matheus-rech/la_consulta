@@ -10,20 +10,39 @@
 import AnnotationService from '../../src/services/AnnotationService';
 import type { Annotation, AnnotationType, AnnotationColor } from '../../src/services/AnnotationService';
 
+// Helper to reset AnnotationService state
+function resetAnnotationService() {
+    AnnotationService.annotations = [];
+    AnnotationService.layers.clear();
+    AnnotationService.currentTool = 'highlight';
+    AnnotationService.currentColor = 'yellow';
+    AnnotationService.currentAuthor = 'Anonymous';
+    AnnotationService.idCounter = 0;
+}
+
 describe('AnnotationService', () => {
     let mockContainer: HTMLElement;
-    let mockCanvas: HTMLCanvasElement;
 
     beforeEach(() => {
-        AnnotationService.annotations = [];
-        AnnotationService.layers.clear();
-        AnnotationService.currentTool = 'highlight';
-        AnnotationService.currentColor = 'yellow';
-        AnnotationService.currentAuthor = 'Anonymous';
+        resetAnnotationService();
 
         mockContainer = document.createElement('div');
         mockContainer.style.width = '800px';
         mockContainer.style.height = '1000px';
+        
+        // Mock getBoundingClientRect for JSDOM
+        mockContainer.getBoundingClientRect = jest.fn(() => ({
+            width: 800,
+            height: 1000,
+            top: 0,
+            left: 0,
+            bottom: 1000,
+            right: 800,
+            x: 0,
+            y: 0,
+            toJSON: () => {},
+        }));
+        
         document.body.appendChild(mockContainer);
     });
 

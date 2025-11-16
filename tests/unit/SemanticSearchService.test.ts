@@ -69,7 +69,9 @@ describe('SemanticSearchService', () => {
 
     describe('search', () => {
         it('should find exact matches', async () => {
-            const results = await SemanticSearchService.search('stroke');
+            const results = await SemanticSearchService.search('stroke', {
+                semanticExpansion: false,
+            });
             
             expect(results.length).toBeGreaterThan(0);
             expect(results[0].matchType).toBe('exact');
@@ -195,6 +197,7 @@ describe('SemanticSearchService', () => {
 
     describe('getSuggestions', () => {
         it('should return recent search history for empty query', () => {
+            // Note: Direct manipulation for testing purposes only
             SemanticSearchService.searchHistory = ['stroke', 'hemorrhage', 'patient'];
             
             const suggestions = SemanticSearchService.getSuggestions('');
@@ -205,6 +208,7 @@ describe('SemanticSearchService', () => {
         });
 
         it('should filter suggestions based on partial query', () => {
+            // Note: Direct manipulation for testing purposes only
             SemanticSearchService.searchHistory = ['stroke', 'hemorrhage', 'patient'];
             
             const suggestions = SemanticSearchService.getSuggestions('str');

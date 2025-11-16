@@ -90,9 +90,14 @@ export const AnnotationService = {
         canvas.style.pointerEvents = 'none';
         canvas.style.zIndex = '10';
 
+        // Use getBoundingClientRect for initial sizing, set CSS to match for reliability
         const rect = container.getBoundingClientRect();
-        canvas.width = rect.width;
-        canvas.height = rect.height;
+        const width = rect.width || container.clientWidth;
+        const height = rect.height || container.clientHeight;
+        canvas.width = width;
+        canvas.height = height;
+        canvas.style.width = width + 'px';
+        canvas.style.height = height + 'px';
 
         container.appendChild(canvas);
 
@@ -107,13 +112,17 @@ export const AnnotationService = {
         return canvas;
     },
 
+    // Counter for generating unique IDs
+    idCounter: 0,
+
     /**
      * Add a new annotation
      */
     addAnnotation: (annotation: Omit<Annotation, 'id' | 'timestamp' | 'author'>): Annotation => {
+        AnnotationService.idCounter++;
         const newAnnotation: Annotation = {
             ...annotation,
-            id: `ann_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            id: `ann_${Date.now()}_${AnnotationService.idCounter}`,
             timestamp: Date.now(),
             author: AnnotationService.currentAuthor,
         };
@@ -382,9 +391,11 @@ export const AnnotationService = {
         const index = AnnotationService.annotations.findIndex(a => a.id === id);
         if (index === -1) return false;
 
+        // Prevent updating id and pageNum to maintain integrity
+        const { id: _id, pageNum: _pageNum, ...safeUpdates } = updates;
         AnnotationService.annotations[index] = {
             ...AnnotationService.annotations[index],
-            ...updates,
+            ...safeUpdates,
         };
 
         const pageNum = AnnotationService.annotations[index].pageNum;
@@ -443,6 +454,43 @@ export const AnnotationService = {
     },
 
     /**
+     * Sanitize text fields to prevent script injection
+     */
+    sanitizeText: (text: string): string => {
+        if (typeof text !== 'string') return '';
+        return text
+            .replace(/<script[^>]*>.*?<\/script>/gi, '')
+            .replace(/<[^>]+>/g, '')
+            .substring(0, 10000); // Limit length
+    },
+
+    /**
+     * Validate annotation object
+     */
+    validateAnnotation: (annotation: any): annotation is Annotation => {
+        if (!annotation || typeof annotation !== 'object') return false;
+        
+        const requiredFields = ['id', 'type', 'pageNum', 'color', 'coordinates', 'timestamp'];
+        for (const field of requiredFields) {
+            if (!(field in annotation)) return false;
+        }
+
+        const validTypes: AnnotationType[] = ['highlight', 'note', 'rectangle', 'circle', 'arrow', 'freehand'];
+        if (!validTypes.includes(annotation.type)) return false;
+
+        const validColors: AnnotationColor[] = ['yellow', 'green', 'blue', 'red', 'purple', 'orange'];
+        if (!validColors.includes(annotation.color)) return false;
+
+        if (typeof annotation.pageNum !== 'number' || annotation.pageNum < 1) return false;
+        if (typeof annotation.timestamp !== 'number') return false;
+
+        if (!annotation.coordinates || typeof annotation.coordinates !== 'object') return false;
+        if (typeof annotation.coordinates.x !== 'number' || typeof annotation.coordinates.y !== 'number') return false;
+
+        return true;
+    },
+
+    /**
      * Import annotations from JSON
      */
     importAnnotations: (jsonData: string): boolean => {
@@ -452,9 +500,28 @@ export const AnnotationService = {
                 throw new Error('Invalid annotation data format');
             }
 
-            AnnotationService.annotations = data.annotations;
+            // Validate and sanitize each annotation
+            const validAnnotations: Annotation[] = [];
+            for (const annotation of data.annotations) {
+                if (!AnnotationService.validateAnnotation(annotation)) {
+                    console.warn('Skipping invalid annotation:', annotation);
+                    continue;
+                }
+
+                // Sanitize text fields
+                const sanitizedAnnotation: Annotation = {
+                    ...annotation,
+                    text: annotation.text ? AnnotationService.sanitizeText(annotation.text) : undefined,
+                    comment: annotation.comment ? AnnotationService.sanitizeText(annotation.comment) : undefined,
+                    author: annotation.author ? AnnotationService.sanitizeText(annotation.author) : 'Anonymous',
+                };
+
+                validAnnotations.push(sanitizedAnnotation);
+            }
+
+            AnnotationService.annotations = validAnnotations;
             
-            AnnotationService.annotations.forEach(annotation => {
+            validAnnotations.forEach(annotation => {
                 const layer = AnnotationService.layers.get(annotation.pageNum);
                 if (layer && !layer.annotations.find(a => a.id === annotation.id)) {
                     layer.annotations.push(annotation);
@@ -465,7 +532,7 @@ export const AnnotationService = {
                 AnnotationService.renderAnnotations(pageNum);
             });
 
-            console.log(`📥 Imported ${data.annotations.length} annotations`);
+            console.log(`📥 Imported ${validAnnotations.length} valid annotations (${data.annotations.length - validAnnotations.length} skipped)`);
             return true;
         } catch (error) {
             console.error('Failed to import annotations:', error);

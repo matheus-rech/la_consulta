@@ -66,6 +66,7 @@ class ResponseCache {
     private maxSize = 100;
 
     set(key: string, data: any, ttl: number): void {
+        // Remove oldest entry if at capacity
         if (this.cache.size >= this.maxSize) {
             const firstKey = this.cache.keys().next().value;
             this.cache.delete(firstKey);
@@ -86,6 +87,10 @@ class ResponseCache {
             this.cache.delete(key);
             return null;
         }
+
+        // Move to end to implement true LRU
+        this.cache.delete(key);
+        this.cache.set(key, entry);
 
         return entry.data;
     }
@@ -123,7 +128,8 @@ class RateLimiter {
 
         const waitTime = (1 - this.tokens) / this.tokensPerSecond * 1000;
         await new Promise(resolve => setTimeout(resolve, waitTime));
-        this.tokens = 0;
+        this.refill();
+        this.tokens = Math.max(0, this.tokens - 1);
     }
 
     private refill(): void {
@@ -208,6 +214,7 @@ export const BackendProxyService = {
         const startTime = Date.now();
         const url = BackendProxyService.buildURL(request.url, request.params);
         const timeout = request.timeout || BackendProxyService.config.timeout || 30000;
+        let timeoutId: NodeJS.Timeout | undefined;
 
         try {
             if (BackendProxyService.rateLimiter) {
@@ -215,7 +222,7 @@ export const BackendProxyService = {
             }
 
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeout);
+            timeoutId = setTimeout(() => controller.abort(), timeout);
 
             const response = await fetch(url, {
                 method: request.method,
@@ -254,9 +261,16 @@ export const BackendProxyService = {
             };
 
         } catch (error) {
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-            if (attempt < (BackendProxyService.config.retryAttempts || 3)) {
+            const maxAttempts = BackendProxyService.config.retryAttempts !== undefined 
+                ? BackendProxyService.config.retryAttempts 
+                : 3;
+            
+            if (attempt <= maxAttempts) {
                 const delay = (BackendProxyService.config.retryDelay || 1000) * Math.pow(2, attempt - 1);
                 console.warn(`⚠️ Request failed (attempt ${attempt}), retrying in ${delay}ms...`);
                 
@@ -443,27 +457,33 @@ export const BackendProxyService = {
     },
 
     /**
-     * Create a CORS proxy URL
+     * Create a CORS proxy URL.
+     * @param targetURL The target URL to proxy.
+     * @param proxyURL The CORS proxy URL. Must be explicitly provided; no default is set.
+     * @throws Error if proxyURL is not provided.
      */
-    createCORSProxyURL: (targetURL: string, proxyURL = 'https://corsproxy.io/?'): string => {
+    createCORSProxyURL: (targetURL: string, proxyURL?: string): string => {
+        if (!proxyURL) {
+            throw new Error('CORS proxy URL must be explicitly provided. No default is set.');
+        }
         return `${proxyURL}${encodeURIComponent(targetURL)}`;
     },
 
     /**
      * Batch multiple requests
      */
-    batch: async <T = any>(requests: ProxyRequest[]): Promise<ProxyResponse<T>[]> => {
+    batch: async <T = any>(requests: ProxyRequest[]): Promise<ProxyResponse<T | null>[]> => {
         console.log(`📦 Batching ${requests.length} requests...`);
         
         const promises = requests.map(request => 
             BackendProxyService.request<T>(request).catch(error => ({
-                data: null,
+                data: null as T | null,
                 status: 0,
                 statusText: error.message,
                 headers: {},
                 cached: false,
                 requestTime: 0,
-            } as ProxyResponse<T>))
+            } as ProxyResponse<T | null>))
         );
 
         return Promise.all(promises);
