@@ -165,8 +165,6 @@ export const BackendProxyService = {
         if (config.rateLimitPerSecond) {
             BackendProxyService.rateLimiter = new RateLimiter(config.rateLimitPerSecond);
         }
-
-        console.log('🔧 Backend proxy configured:', BackendProxyService.config);
     },
 
     /**
@@ -282,7 +280,6 @@ export const BackendProxyService = {
             const cached = BackendProxyService.cache.get(cacheKey);
 
             if (cached) {
-                console.log('💾 Returning cached response for:', request.url);
                 return {
                     ...cached,
                     cached: true,
@@ -419,7 +416,6 @@ export const BackendProxyService = {
      */
     clearCache: (): void => {
         BackendProxyService.cache.clear();
-        console.log('🗑️ Cache cleared');
     },
 
     /**
@@ -453,8 +449,6 @@ export const BackendProxyService = {
      * Batch multiple requests
      */
     batch: async <T = any>(requests: ProxyRequest[]): Promise<ProxyResponse<T>[]> => {
-        console.log(`📦 Batching ${requests.length} requests...`);
-        
         const promises = requests.map(request => 
             BackendProxyService.request<T>(request).catch(error => ({
                 data: null,
