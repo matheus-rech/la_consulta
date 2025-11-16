@@ -2,7 +2,8 @@ import AppStateManager from '../../src/state/AppStateManager';
 
 describe('AppStateManager', () => {
   beforeEach(() => {
-    // Reset to a clean state using the public API
+    // Reset to a clean state using the test-only reset method
+    AppStateManager.__resetForTesting();
     AppStateManager.setState({
       pdfDoc: null,
       currentPage: 1,

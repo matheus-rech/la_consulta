@@ -61,6 +61,9 @@ describe('Complete User Workflow E2E Test', () => {
   beforeEach(() => {
     // Clear extractions between tests to prevent accumulation
     AppStateManager.setState({ extractions: [] });
+    // Also clear ExtractionTracker's internal storage
+    ExtractionTracker.extractions = [];
+    ExtractionTracker.fieldMap.clear();
   });
 
   describe('Step 1: PDF Upload and Loading', () => {
@@ -396,14 +399,11 @@ describe('Complete User Workflow E2E Test', () => {
       ExtractionTracker.saveToStorage();
 
       const extractions = ExtractionTracker.getExtractions();
-      // Check that we have at least 2 extractions (may have more from previous tests)
-      expect(extractions.length).toBeGreaterThanOrEqual(2);
-      // Check the last two extractions match what we just added
-      const lastTwo = extractions.slice(-2);
-      expect(lastTwo[0].method).toBe('manual');
-      expect(lastTwo[0].fieldName).toBe('study_title');
-      expect(lastTwo[1].method).toBe('gemini-pico');
-      expect(lastTwo[1].fieldName).toBe('population');
+      expect(extractions.length).toBe(2);
+      expect(extractions[0].method).toBe('manual');
+      expect(extractions[0].fieldName).toBe('study_title');
+      expect(extractions[1].method).toBe('gemini-pico');
+      expect(extractions[1].fieldName).toBe('population');
 
       const exportData = {
         formData,
@@ -417,10 +417,9 @@ describe('Complete User Workflow E2E Test', () => {
         },
       };
 
-      // Verify the export data structure (may have more extractions from previous tests)
-      expect(exportData.metadata.totalExtractions).toBeGreaterThanOrEqual(2);
-      expect(exportData.metadata.manualExtractions).toBeGreaterThanOrEqual(1);
-      expect(exportData.metadata.aiExtractions).toBeGreaterThanOrEqual(1);
+      expect(exportData.metadata.totalExtractions).toBe(2);
+      expect(exportData.metadata.manualExtractions).toBe(1);
+      expect(exportData.metadata.aiExtractions).toBe(1);
     });
   });
 
