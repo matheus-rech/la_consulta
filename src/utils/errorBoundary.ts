@@ -132,14 +132,6 @@ function handleGlobalError(
 
     saveCrashState(errorMessage, errorStack);
 
-    const userMessage = `
-      An unexpected error occurred. Your work has been saved and can be recovered.
-      
-      Error: ${errorMessage}
-      
-      Please refresh the page to continue working.
-    `;
-
     StatusManager.show(
       'Application error detected. Your work has been saved for recovery.',
       'error',
