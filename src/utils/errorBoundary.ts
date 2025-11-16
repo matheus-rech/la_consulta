@@ -68,7 +68,7 @@ function saveCrashState(errorMessage: string, errorStack?: string): void {
     const formData: any = {};
     const formElements = document.querySelectorAll('input, textarea, select');
     formElements.forEach((element: any) => {
-      if (element.id && element.value) {
+      if (element.id) {
         formData[element.id] = element.value;
       }
     });
