@@ -57,6 +57,12 @@ const MemoryManager = {
     this.listeners = [];
     this.timeouts = [];
 
+    // Clean up PDFRenderer resources
+    // Note: We use a dynamic import check to avoid circular dependencies
+    if (typeof window !== 'undefined' && (window as any).PDFRenderer) {
+      (window as any).PDFRenderer.cleanup();
+    }
+
     console.log('Cleanup performed (simplified)');
   },
 };
