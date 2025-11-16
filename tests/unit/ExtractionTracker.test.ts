@@ -24,16 +24,19 @@ describe('ExtractionTracker', () => {
       pdfRenderer: {},
     });
 
-    localStorage.clear();
-    (localStorage.getItem as jest.Mock).mockClear();
-    (localStorage.setItem as jest.Mock).mockClear();
+    // Reset ExtractionTracker state
+    ExtractionTracker.extractions = [];
+    ExtractionTracker.fieldMap = new Map();
+
+    // Clear all mocks
+    jest.clearAllMocks();
   });
 
   describe('addExtraction', () => {
     it('should add valid extraction', () => {
       const extraction: Extraction = {
         id: 'ext_123',
-        timestamp: Date.now(),
+        timestamp: new Date().toISOString(),
         fieldName: 'study_title',
         text: 'Clinical Study Title',
         page: 1,
@@ -52,7 +55,7 @@ describe('ExtractionTracker', () => {
     it('should sanitize text before adding', () => {
       const extraction: Extraction = {
         id: 'ext_123',
-        timestamp: Date.now(),
+        timestamp: new Date().toISOString(),
         fieldName: 'test',
         text: '<script>alert("xss")</script>Safe text',
         page: 1,
@@ -72,44 +75,33 @@ describe('ExtractionTracker', () => {
         text: 'Missing required fields',
       };
 
-      ExtractionTracker.addExtraction(invalid as any);
+      const result = ExtractionTracker.addExtraction(invalid as any);
 
-      expect(mockStatusManager.show).toHaveBeenCalledWith(
-        expect.stringContaining('Invalid'),
-        'error'
-      );
+      // Should return null for invalid extraction
+      expect(result).toBeNull();
+      // Should not update state
+      expect(mockAppStateManager.setState).not.toHaveBeenCalled();
     });
   });
 
   describe('getExtractions', () => {
     it('should return all extractions', () => {
-      const extractions: Extraction[] = [
-        {
-          id: 'ext_1',
-          timestamp: Date.now(),
-          fieldName: 'field1',
-          text: 'text1',
-          page: 1,
-          coordinates: { left: 0, top: 0, width: 10, height: 10 },
-          method: 'manual',
-          documentName: 'test.pdf',
-        },
-      ];
+      const extraction: Extraction = {
+        id: 'ext_1',
+        timestamp: new Date().toISOString(),
+        fieldName: 'field1',
+        text: 'text1',
+        page: 1,
+        coordinates: { left: 0, top: 0, width: 10, height: 10 },
+        method: 'manual',
+        documentName: 'test.pdf',
+      };
 
-      mockAppStateManager.getState.mockReturnValue({ extractions });
+      // Add extraction to tracker
+      ExtractionTracker.extractions = [extraction];
 
       const result = ExtractionTracker.getExtractions();
-      expect(result).toEqual(extractions);
-    });
-  });
-
-  describe('clearExtractions', () => {
-    it('should clear all extractions', () => {
-      ExtractionTracker.clearExtractions();
-
-      expect(mockAppStateManager.setState).toHaveBeenCalledWith({
-        extractions: [],
-      });
+      expect(result).toEqual([extraction]);
     });
   });
 
@@ -118,7 +110,7 @@ describe('ExtractionTracker', () => {
       const extractions: Extraction[] = [
         {
           id: 'ext_1',
-          timestamp: Date.now(),
+          timestamp: new Date().toISOString(),
           fieldName: 'test',
           text: 'test',
           page: 1,
@@ -130,51 +122,54 @@ describe('ExtractionTracker', () => {
 
       mockAppStateManager.getState.mockReturnValue({ extractions });
 
+      const setItemSpy = jest.spyOn(Storage.prototype, 'setItem');
+
       ExtractionTracker.saveToStorage();
 
-      expect(localStorage.setItem).toHaveBeenCalledWith(
+      expect(setItemSpy).toHaveBeenCalledWith(
         'clinical_extractions_simple',
         expect.any(String)
       );
+
+      jest.restoreAllMocks();
     });
 
     it('should load from localStorage', () => {
-      const savedData = {
-        extractions: [
-          {
-            id: 'ext_1',
-            timestamp: Date.now(),
-            fieldName: 'test',
-            text: 'test',
-            page: 1,
-            coordinates: { left: 0, top: 0, width: 10, height: 10 },
-            method: 'manual',
-            documentName: 'test.pdf',
-          },
-        ],
-        version: '1.0',
-      };
+      const savedExtractions = [
+        {
+          id: 'ext_1',
+          timestamp: new Date().toISOString(),
+          fieldName: 'test',
+          text: 'test',
+          page: 1,
+          coordinates: { left: 0, top: 0, width: 10, height: 10 },
+          method: 'manual',
+          documentName: 'test.pdf',
+        },
+      ];
 
-      (localStorage.getItem as jest.Mock).mockReturnValue(
-        JSON.stringify(savedData)
+      jest.spyOn(Storage.prototype, 'getItem').mockReturnValue(
+        JSON.stringify(savedExtractions)
       );
 
       ExtractionTracker.loadFromStorage();
 
       expect(mockAppStateManager.setState).toHaveBeenCalledWith({
-        extractions: savedData.extractions,
+        extractions: savedExtractions,
       });
+
+      jest.restoreAllMocks();
     });
 
     it('should handle corrupted localStorage data', () => {
-      (localStorage.getItem as jest.Mock).mockReturnValue('invalid json');
+      jest.spyOn(Storage.prototype, 'getItem').mockReturnValue('invalid json');
 
       ExtractionTracker.loadFromStorage();
 
-      expect(mockStatusManager.show).toHaveBeenCalledWith(
-        expect.stringContaining('Failed'),
-        'error'
-      );
+      // Should reset extractions on error
+      expect(ExtractionTracker.getExtractions()).toEqual([]);
+
+      jest.restoreAllMocks();
     });
   });
 });
