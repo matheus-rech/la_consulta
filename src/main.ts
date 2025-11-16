@@ -847,6 +847,26 @@ function exposeWindowAPI() {
     console.log('Clinical Extractor API exposed to window');
 }
 
+// ==================== CLEANUP REGISTRATION ====================
+
+/**
+ * Register cleanup functions for all modules that need cleanup
+ * This creates a central cleanup registry without circular dependencies
+ */
+function registerCleanupCallbacks() {
+    // Register PDFRenderer cleanup
+    MemoryManager.registerCleanup('PDFRenderer', () => {
+        PDFRenderer.cleanup();
+    });
+
+    // Register AnnotationService cleanup
+    MemoryManager.registerCleanup('AnnotationService', () => {
+        AnnotationService.cleanup();
+    });
+
+    console.log('Cleanup callbacks registered');
+}
+
 // ==================== INITIALIZATION ====================
 
 /**
@@ -874,11 +894,15 @@ async function initializeApp() {
         configurePDFJS();
         console.log('✓ PDF.js configured');
 
-        // 4. Set up event listeners
+        // 4. Register cleanup callbacks
+        registerCleanupCallbacks();
+        console.log('✓ Cleanup callbacks registered');
+
+        // 5. Set up event listeners
         setupEventListeners();
         console.log('✓ Event listeners configured');
 
-        // 5. Expose window API
+        // 6. Expose window API
         exposeWindowAPI();
         console.log('✓ Window API exposed');
 
