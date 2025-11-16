@@ -21,7 +21,6 @@ function resetAnnotationService() {
 
 describe('AnnotationService', () => {
     let mockContainer: HTMLElement;
-    let mockCanvas: HTMLCanvasElement;
 
     beforeEach(() => {
         resetAnnotationService();
