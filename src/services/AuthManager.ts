@@ -35,6 +35,7 @@ class AuthManager {
           } else {
             throw loginError;
           }
+        }
       }
 
       this.initialized = true;

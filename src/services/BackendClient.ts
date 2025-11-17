@@ -55,10 +55,6 @@ class BackendClient {
       }
       throw new Error(errorDetail);
     }
-
-    const tokens: AuthTokens = await response.json();
-    this.saveTokenToStorage(tokens.access_token);
-    return tokens;
   }
 
   async login(email: string, password: string): Promise<AuthTokens> {
@@ -84,10 +80,6 @@ class BackendClient {
       (error as any).status = response.status;
       throw error;
     }
-
-    const tokens: AuthTokens = await response.json();
-    this.saveTokenToStorage(tokens.access_token);
-    return tokens;
   }
 
   logout(): void {
@@ -112,17 +104,29 @@ class BackendClient {
       ...options.headers,
     };
 
-    const response = await fetch(`${BACKEND_URL}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    try {
+      const response = await fetch(`${BACKEND_URL}${endpoint}`, {
+        ...options,
+        headers,
+      });
 
-    if (response.status === 401) {
-      this.clearTokenFromStorage();
-      throw new Error('Session expired. Please login again.');
+      if (response.status === 401) {
+        this.clearTokenFromStorage();
+        throw new Error('Session expired. Please login again.');
+      }
+
+      return response;
+    } catch (error) {
+      if (error instanceof Error) {
+        // Re-throw our custom errors
+        if (error.message.includes('Session expired') || error.message.includes('Not authenticated')) {
+          throw error;
+        }
+        // Network errors - provide user-friendly message
+        throw new Error(`Network error: ${error.message}`);
+      }
+      throw new Error('An unexpected network error occurred');
     }
-
-    return response;
   }
 
   async generatePICO(documentId: string, pdfText: string): Promise<any> {
@@ -142,8 +146,6 @@ class BackendClient {
       }
       throw new Error(errorDetail);
     }
-
-    return await response.json();
   }
 
   async generateSummary(documentId: string, pdfText: string): Promise<any> {
@@ -163,8 +165,6 @@ class BackendClient {
       }
       throw new Error(errorDetail);
     }
-
-    return await response.json();
   }
 
   async validateField(documentId: string, fieldId: string, fieldValue: string, pdfText: string): Promise<any> {
@@ -189,8 +189,6 @@ class BackendClient {
       }
       throw new Error(errorDetail);
     }
-
-    return await response.json();
   }
 
   async findMetadata(documentId: string, pdfText: string): Promise<any> {
@@ -210,8 +208,6 @@ class BackendClient {
       }
       throw new Error(errorDetail);
     }
-
-    return await response.json();
   }
 
   async extractTables(documentId: string, pdfText: string): Promise<any> {
@@ -231,8 +227,6 @@ class BackendClient {
       }
       throw new Error(errorDetail);
     }
-
-    return await response.json();
   }
 
   async analyzeImage(documentId: string, imageBase64: string, prompt: string): Promise<any> {
@@ -256,8 +250,6 @@ class BackendClient {
       }
       throw new Error(errorDetail);
     }
-
-    return await response.json();
   }
 
   async deepAnalysis(documentId: string, pdfText: string, prompt: string): Promise<any> {
@@ -281,63 +273,133 @@ class BackendClient {
       }
       throw new Error(errorDetail);
     }
-
-    return await response.json();
   }
 
   async uploadDocument(filename: string, pdfData: string, totalPages: number, metadata?: any): Promise<any> {
-    const response = await this.authenticatedRequest('/api/documents', {
-      method: 'POST',
-      body: JSON.stringify({
-        filename,
-        pdf_data: pdfData,
-        total_pages: totalPages,
-        metadata,
-      }),
-    });
+    try {
+      const response = await this.authenticatedRequest('/api/documents', {
+        method: 'POST',
+        body: JSON.stringify({
+          filename,
+          pdf_data: pdfData,
+          total_pages: totalPages,
+          metadata,
+        }),
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Document upload failed');
+      if (!response.ok) {
+        let errorMessage = 'Document upload failed';
+        try {
+          const error = await response.json();
+          errorMessage = error.detail || errorMessage;
+        } catch {
+          // If JSON parsing fails, use the default error message
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message.includes('Document upload') || 
+            error.message.includes('Network error') ||
+            error.message.includes('Session expired')) {
+          throw error;
+        }
+        throw new Error(`Document upload failed: ${error.message}`);
+      }
+      throw new Error('Document upload failed due to an unexpected error');
     }
-
-    return await response.json();
   }
 
   async getDocuments(): Promise<any[]> {
-    const response = await this.authenticatedRequest('/api/documents', {
-      method: 'GET',
-    });
+    try {
+      const response = await this.authenticatedRequest('/api/documents', {
+        method: 'GET',
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Failed to fetch documents');
+      if (!response.ok) {
+        let errorMessage = 'Failed to fetch documents';
+        try {
+          const error = await response.json();
+          errorMessage = error.detail || errorMessage;
+        } catch {
+          // If JSON parsing fails, use the default error message
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch documents') || 
+            error.message.includes('Network error') ||
+            error.message.includes('Session expired')) {
+          throw error;
+        }
+        throw new Error(`Failed to fetch documents: ${error.message}`);
+      }
+      throw new Error('Failed to fetch documents due to an unexpected error');
     }
-
-    return await response.json();
   }
 
   async getDocument(documentId: string): Promise<any> {
-    const response = await this.authenticatedRequest(`/api/documents/${documentId}`, {
-      method: 'GET',
-    });
+    try {
+      const response = await this.authenticatedRequest(`/api/documents/${documentId}`, {
+        method: 'GET',
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Failed to fetch document');
+      if (!response.ok) {
+        let errorMessage = 'Failed to fetch document';
+        try {
+          const error = await response.json();
+          errorMessage = error.detail || errorMessage;
+        } catch {
+          // If JSON parsing fails, use the default error message
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch document') || 
+            error.message.includes('Network error') ||
+            error.message.includes('Session expired')) {
+          throw error;
+        }
+        throw new Error(`Failed to fetch document: ${error.message}`);
+      }
+      throw new Error('Failed to fetch document due to an unexpected error');
     }
-
-    return await response.json();
   }
 
   async deleteDocument(documentId: string): Promise<void> {
-    const response = await this.authenticatedRequest(`/api/documents/${documentId}`, {
-      method: 'DELETE',
-    });
+    try {
+      const response = await this.authenticatedRequest(`/api/documents/${documentId}`, {
+        method: 'DELETE',
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Failed to delete document');
+      if (!response.ok) {
+        let errorMessage = 'Failed to delete document';
+        try {
+          const error = await response.json();
+          errorMessage = error.detail || errorMessage;
+        } catch {
+          // If JSON parsing fails, use the default error message
+        }
+        throw new Error(errorMessage);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to delete document') || 
+            error.message.includes('Network error') ||
+            error.message.includes('Session expired')) {
+          throw error;
+        }
+        throw new Error(`Failed to delete document: ${error.message}`);
+      }
+      throw new Error('Failed to delete document due to an unexpected error');
     }
   }
 }
