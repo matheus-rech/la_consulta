@@ -48,6 +48,21 @@ export function calculateBoundingBox(items: TextItem[]): Coordinates {
 }
 
 /**
+ * Normalizes coordinates to use consistent x/y structure
+ * Converts legacy {left, top} format to standard {x, y} format
+ * @param coords - Coordinates object that may have either format
+ * @returns Normalized coordinates with x/y structure
+ */
+export function normalizeCoordinates(coords: Coordinates): Coordinates {
+    return {
+        x: coords.x ?? coords.left ?? 0,
+        y: coords.y ?? coords.top ?? 0,
+        width: coords.width ?? 0,
+        height: coords.height ?? 0
+    };
+}
+
+/**
  * Converts a Blob to base64 string
  * @param blob - The blob to convert
  * @returns Promise resolving to base64 string (without data URL prefix)

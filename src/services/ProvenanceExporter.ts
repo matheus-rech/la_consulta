@@ -18,8 +18,10 @@
 import AppStateManager from '../state/AppStateManager';
 import ExtractionTracker from '../data/ExtractionTracker';
 import type { TextChunk } from './CitationService';
-import type { ExtractedTable } from './TableExtractor';
 import type { ExtractedFigure } from './FigureExtractor';
+import type { ExtractedTable } from './TableExtractor';
+import type { EnhancedFigure, EnhancedTable } from './AgentOrchestrator';
+
 
 export interface ProvenanceExport {
     document: {
@@ -153,10 +155,10 @@ export const ProvenanceExporter = {
                 text: ext.text,
                 pageNum: ext.page,
                 bbox: {
-                    x: ext.coordinates?.x ?? ext.coordinates?.left ?? 0,
-                    y: ext.coordinates?.y ?? ext.coordinates?.top ?? 0,
-                    width: ext.coordinates?.width ?? 0,
-                    height: ext.coordinates?.height ?? 0,
+                    x: ext.coordinates.x ?? 0,
+                    y: ext.coordinates.y ?? 0,
+                    width: ext.coordinates.width ?? 0,
+                    height: ext.coordinates.height ?? 0,
                 },
                 method: ext.method,
                 timestamp: ext.timestamp,

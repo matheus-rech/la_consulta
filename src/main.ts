@@ -67,6 +67,7 @@ import TextHighlighter from './services/TextHighlighter';
 // Utilities
 import {
     calculateBoundingBox,
+    normalizeCoordinates,
     addExtractionMarker,
     addExtractionMarkersForPage,
     autoAdvanceField,
@@ -789,8 +790,9 @@ function configureBackendProxy() {
  */
 function exposeWindowAPI() {
     window.ClinicalExtractor = {
-        // Helper Functions (6)
+        // Helper Functions (7)
         calculateBoundingBox,
+        normalizeCoordinates,
         addExtractionMarker,
         addExtractionMarkersForPage,
         autoAdvanceField,
@@ -905,6 +907,10 @@ async function initializeApp() {
 
         FormManager.initialize();
         console.log('✓ Form Manager initialized');
+
+        // Configure TextHighlighter with PDF container
+        TextHighlighter.configure({ container: '.pdf-page' });
+        console.log('✓ Text Highlighter configured');
 
         // Initialize backend authentication
         await AuthManager.initialize();
