@@ -106,7 +106,8 @@ class MedicalAgentBridge {
     async callAgent(
         agentName: keyof typeof AGENT_PROMPTS,
         data: ExtractedTable | ExtractedFigure,
-        dataType: 'table' | 'figure'
+        dataType: 'table' | 'figure',
+        documentId?: string
     ): Promise<AgentResult> {
         const startTime = Date.now();
 
@@ -114,7 +115,7 @@ class MedicalAgentBridge {
             // Build agent-specific prompt
             const prompt = this.buildAgentPrompt(agentName, data, dataType);
 
-            const response = await this.callBackendAgent(prompt, agentName);
+            const response = await this.callBackendAgent(prompt, agentName, documentId);
 
             // Parse response
             const parsedData = this.parseAgentResponse(response, agentName);
@@ -201,10 +202,11 @@ Respond with JSON:
      * Call backend AI endpoint with agent prompt
      * Routes through secure backend API instead of direct Gemini calls
      */
-    private async callBackendAgent(prompt: string, agentName: string): Promise<string> {
+    private async callBackendAgent(prompt: string, agentName: string, documentId?: string): Promise<string> {
         await AuthManager.ensureAuthenticated();
 
-        const response = await BackendClient.deepAnalysis('', prompt);
+        const docId = documentId || `temp-agent-${Date.now()}`;
+        const response = await BackendClient.deepAnalysis(docId, '', prompt);
         
         return response.analysis;
     }
@@ -245,12 +247,13 @@ Respond with JSON:
     async callMultipleAgents(
         agentNames: Array<keyof typeof AGENT_PROMPTS>,
         data: ExtractedTable | ExtractedFigure,
-        dataType: 'table' | 'figure'
+        dataType: 'table' | 'figure',
+        documentId?: string
     ): Promise<AgentResult[]> {
         console.log(`Calling ${agentNames.length} agents in parallel...`);
 
         const results = await Promise.all(
-            agentNames.map(name => this.callAgent(name, data, dataType))
+            agentNames.map(name => this.callAgent(name, data, dataType, documentId))
         );
 
         return results;

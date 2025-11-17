@@ -154,8 +154,10 @@ async function generatePICO(): Promise<void> {
             throw new Error("Could not read text from the PDF.");
         }
 
+        const documentId = state.documentName || `temp-${Date.now()}`;
+
         // Call backend API instead of direct Gemini
-        const response = await BackendClient.generatePICO(documentText);
+        const response = await BackendClient.generatePICO(documentId, documentText);
         const data = response; // Backend returns PICO fields directly
 
         // Populate fields
@@ -224,8 +226,10 @@ async function generateSummary(): Promise<void> {
             throw new Error("Could not read text from the PDF.");
         }
 
+        const documentId = state.documentName || `temp-${Date.now()}`;
+
         // Call backend API instead of direct Gemini
-        const response = await BackendClient.generateSummary(documentText);
+        const response = await BackendClient.generateSummary(documentId, documentText);
         const summaryText = response.summary; // Backend returns {summary: string}
 
         const summaryField = document.getElementById('predictorsPoorOutcomeSurgical') as HTMLTextAreaElement;
@@ -294,8 +298,10 @@ async function validateFieldWithAI(fieldId: string): Promise<void> {
             throw new Error("Could not read text from PDF for validation.");
         }
 
+        const documentId = state.documentName || `temp-${Date.now()}`;
+
         // Call backend API instead of direct Gemini
-        const response = await BackendClient.validateField(fieldId, claim, documentText);
+        const response = await BackendClient.validateField(documentId, fieldId, claim, documentText);
         const validation = response; // Backend returns {is_supported, quote, confidence}
 
         if (validation.is_supported) {
@@ -347,8 +353,10 @@ async function findMetadata(): Promise<void> {
             throw new Error("Could not read text from the PDF.");
         }
 
+        const documentId = state.documentName || `temp-${Date.now()}`;
+
         // Call backend API instead of direct Gemini
-        const response = await BackendClient.findMetadata(documentText);
+        const response = await BackendClient.findMetadata(documentId, documentText);
         const data = response; // Backend returns {doi, pmid, journal, year}
 
         const doiField = document.getElementById('doi') as HTMLInputElement;
@@ -395,8 +403,10 @@ async function handleExtractTables(): Promise<void> {
         const documentText = await getAllPdfText();
         if (!documentText) return;
 
+        const documentId = state.documentName || `temp-${Date.now()}`;
+
         // Call backend API instead of direct Gemini
-        const response = await BackendClient.extractTables(documentText);
+        const response = await BackendClient.extractTables(documentId, documentText);
         const result = response; // Backend returns {tables: [...]}
 
         if (result.tables && result.tables.length > 0 && resultsContainer) {
@@ -500,9 +510,12 @@ async function handleImageAnalysis(): Promise<void> {
         await ensureBackendAuthenticated();
 
         const base64Data = await blobToBase64(file);
+        
+        const state = AppStateManager.getState();
+        const documentId = state.documentName || `temp-${Date.now()}`;
 
         // Call backend API instead of direct Gemini
-        const response = await BackendClient.analyzeImage(base64Data, prompt);
+        const response = await BackendClient.analyzeImage(documentId, base64Data, prompt);
         const analysisText = response.analysis; // Backend returns {analysis: string}
 
         if (resultsContainer) resultsContainer.innerText = analysisText;
@@ -546,8 +559,10 @@ async function handleDeepAnalysis(): Promise<void> {
         const documentText = await getAllPdfText();
         if (!documentText) return;
 
+        const documentId = state.documentName || `temp-${Date.now()}`;
+
         // Call backend API instead of direct Gemini
-        const response = await BackendClient.deepAnalysis(documentText, prompt);
+        const response = await BackendClient.deepAnalysis(documentId, documentText, prompt);
         const analysisText = response.analysis; // Backend returns {analysis: string}
 
         if (resultsContainer) resultsContainer.innerText = analysisText;
