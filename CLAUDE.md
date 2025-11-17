@@ -70,7 +70,7 @@ src/
 │   ├── index.ts                     # TypeScript interfaces (extended with citations)
 │   └── window.d.ts                  # Window API type definitions
 ├── config/
-│   └── index.ts                     # App configuration (36 lines)
+│   └── index.ts                     # App configuration (105 lines)
 ├── state/
 │   └── AppStateManager.ts           # Global state with Observer pattern (138 lines)
 ├── data/
