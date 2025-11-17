@@ -26,16 +26,15 @@ class AuthManager {
           await BackendClient.login(DEFAULT_USER.email, DEFAULT_USER.password);
           console.log('✅ Authenticated with backend');
         } catch (loginError: any) {
-          // Check for 401 Unauthorized status, which means user doesn't exist or wrong password
-          // More robust than checking error message text
-          if (loginError.status === 401 || 
+          // Prefer status code check, fallback to message if status is missing
+          if ((loginError.status === 401) ||
+              (loginError.response?.status === 401) ||
               (loginError.message && loginError.message.includes('Incorrect email or password'))) {
             await BackendClient.register(DEFAULT_USER.email, DEFAULT_USER.password);
             console.log('✅ Registered and authenticated with backend');
           } else {
             throw loginError;
           }
-        }
       }
 
       this.initialized = true;
