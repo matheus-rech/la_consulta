@@ -3,23 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clinical Study Extraction System - Preview</title>
+    <meta name="description" content="Professional AI-powered platform for extracting structured clinical data from medical research papers. Features multi-agent AI intelligence, citation provenance tracking, and comprehensive systematic review tools.">
+    <meta name="keywords" content="clinical data extraction, medical research, systematic review, PICO extraction, AI medical research, clinical trials, meta-analysis">
+    <meta name="author" content="Clinical Extractor Team">
+    <meta name="theme-color" content="#2e7d32">
+    <title>Clinical Extractor | AI-Powered Medical Research Data Extraction Platform</title>
     <!-- Load PDF.js library from CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <!-- Google API client is loaded dynamically in the main script -->
 
     <style>
-        /* SCSS Variables */
+        /* SCSS Variables - Clinical Research Theme */
         :root {
-            --primary-blue: #007bff;
-            --primary-blue-dark: #0056b3;
-            --success-green: #4CAF50;
-            --success-green-light: #8BC34A;
-            --warning-orange: #FF9800;
-            --warning-orange-dark: #F57C00;
-            --error-red: #f44336;
-            --error-red-dark: #c82333;
-            --info-blue: #2196F3;
+            /* Medical/Clinical Color Palette */
+            --primary-blue: #1976d2;        /* Professional Medical Blue */
+            --primary-blue-dark: #0d47a1;   /* Deep Medical Blue */
+            --success-green: #2e7d32;       /* Clinical Green */
+            --success-green-light: #66bb6a; /* Light Clinical Green */
+            --warning-orange: #f57c00;      /* Medical Alert Orange */
+            --warning-orange-dark: #e65100;  /* Deep Alert Orange */
+            --error-red: #d32f2f;           /* Medical Red */
+            --error-red-dark: #b71c1c;      /* Deep Medical Red */
+            --info-blue: #0288d1;           /* Information Blue */
+            --medical-teal: #00897b;        /* Medical Teal Accent */
+            --medical-purple: #7b1fa2;      /* Research Purple */
 
             --gray-100: #f8f9fa;
             --gray-200: #e9ecef;
@@ -907,9 +914,21 @@
     <div class="main-container">
         <!-- Form Panel (Left) -->
         <div class="form-panel">
-            <h1>Clinical Study Master Extraction</h1>
-            <p class="subtitle">
-                Click a field, then highlight text in the PDF to extract with full traceability.
+            <!-- Professional Header with Medical Theme -->
+            <div style="background: linear-gradient(135deg, #2e7d32 0%, #1976d2 100%); padding: 20px; margin: -20px -30px 20px -30px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                <div style="display: flex; align-items: center; gap: 15px; color: white;">
+                    <div style="font-size: 48px;">🏥</div>
+                    <div style="flex: 1;">
+                        <h1 style="margin: 0; font-size: 26px; font-weight: 700; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">Clinical Extractor</h1>
+                        <p style="margin: 5px 0 0 0; font-size: 14px; color: #e8f5e9; font-weight: 500; letter-spacing: 0.5px;">AI-Powered Medical Research Data Extraction</p>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; backdrop-filter: blur(10px);">
+                        Multi-Agent AI
+                    </div>
+                </div>
+            </div>
+            <p class="subtitle" style="color: #555; font-size: 13px; margin-top: 15px; padding: 12px; background: #f0f9ff; border-left: 4px solid #1976d2; border-radius: 4px;">
+                <strong>📋 Quick Start:</strong> Click a field below, then highlight text in the PDF to extract with full provenance tracking, or use AI-powered multi-agent extraction for automated analysis.
             </p>
 
             <!-- Progress Bar -->
