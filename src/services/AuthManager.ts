@@ -8,8 +8,8 @@ import BackendClient from './BackendClient';
 import StatusManager from '../utils/status';
 
 const DEFAULT_USER = {
-  email: 'default@clinicalextractor.local',
-  password: 'clinical_extractor_default_2024'
+  email: import.meta.env.VITE_DEFAULT_USER_EMAIL || 'default@clinicalextractor.local',
+  password: import.meta.env.VITE_DEFAULT_USER_PASSWORD || 'clinical_extractor_default_2024'
 };
 
 class AuthManager {

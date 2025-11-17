@@ -36,76 +36,49 @@ class BackendClient {
   }
 
   async register(email: string, password: string): Promise<AuthTokens> {
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
+    const response = await fetch(`${BACKEND_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
 
-      if (!response.ok) {
-        let errorMessage = 'Registration failed';
-        try {
-          const error = await response.json();
-          errorMessage = error.detail || errorMessage;
-        } catch {
-          // If JSON parsing fails, use the default error message
-        }
-        throw new Error(errorMessage);
+    if (!response.ok) {
+      let errorDetail = 'Registration failed';
+      try {
+        const error = await response.json();
+        errorDetail = error.detail || error.message || errorDetail;
+      } catch {
+        const text = await response.text().catch(() => '');
+        errorDetail = text || errorDetail;
       }
-
-      const tokens: AuthTokens = await response.json();
-      this.saveTokenToStorage(tokens.access_token);
-      return tokens;
-    } catch (error) {
-      if (error instanceof Error) {
-        // Re-throw our custom errors with their messages
-        if (error.message.includes('Registration failed') || error.message.includes('detail')) {
-          throw error;
-        }
-        // Network or other errors - provide user-friendly message
-        throw new Error(`Registration failed: ${error.message}`);
-      }
-      throw new Error('Registration failed due to an unexpected error');
+      throw new Error(errorDetail);
     }
   }
 
   async login(email: string, password: string): Promise<AuthTokens> {
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
+    const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
 
-      if (!response.ok) {
-        let errorMessage = 'Login failed';
-        try {
-          const error = await response.json();
-          errorMessage = error.detail || errorMessage;
-        } catch {
-          // If JSON parsing fails, use the default error message
-        }
-        throw new Error(errorMessage);
+    if (!response.ok) {
+      let errorDetail = 'Login failed';
+      try {
+        const error = await response.json();
+        errorDetail = error.detail || error.message || errorDetail;
+      } catch {
+        const text = await response.text().catch(() => '');
+        errorDetail = text || errorDetail;
       }
-
-      const tokens: AuthTokens = await response.json();
-      this.saveTokenToStorage(tokens.access_token);
-      return tokens;
-    } catch (error) {
-      if (error instanceof Error) {
-        // Re-throw our custom errors with their messages
-        if (error.message.includes('Login failed') || error.message.includes('detail')) {
-          throw error;
-        }
-        // Network or other errors - provide user-friendly message
-        throw new Error(`Login failed: ${error.message}`);
-      }
-      throw new Error('Login failed due to an unexpected error');
+      const error = new Error(errorDetail);
+      // Attach status code for better error handling
+      (error as any).status = response.status;
+      throw error;
     }
   }
 
@@ -156,238 +129,149 @@ class BackendClient {
     }
   }
 
-  async generatePICO(pdfText: string): Promise<any> {
-    try {
-      const response = await this.authenticatedRequest('/api/ai/generate-pico', {
-        method: 'POST',
-        body: JSON.stringify({ pdf_text: pdfText }),
-      });
+  async generatePICO(documentId: string, pdfText: string): Promise<any> {
+    const response = await this.authenticatedRequest('/api/ai/generate-pico', {
+      method: 'POST',
+      body: JSON.stringify({ document_id: documentId, pdf_text: pdfText }),
+    });
 
-      if (!response.ok) {
-        let errorMessage = 'PICO generation failed';
-        try {
-          const error = await response.json();
-          errorMessage = error.detail || errorMessage;
-        } catch {
-          // If JSON parsing fails, use the default error message
-        }
-        throw new Error(errorMessage);
+    if (!response.ok) {
+      let errorDetail = 'PICO generation failed';
+      try {
+        const error = await response.json();
+        errorDetail = error.detail || error.message || errorDetail;
+      } catch {
+        const text = await response.text().catch(() => '');
+        errorDetail = text || errorDetail;
       }
-
-      return await response.json();
-    } catch (error) {
-      if (error instanceof Error) {
-        // Re-throw errors from authenticatedRequest or our custom errors
-        if (error.message.includes('PICO generation') || 
-            error.message.includes('Network error') ||
-            error.message.includes('Session expired')) {
-          throw error;
-        }
-        throw new Error(`PICO generation failed: ${error.message}`);
-      }
-      throw new Error('PICO generation failed due to an unexpected error');
+      throw new Error(errorDetail);
     }
   }
 
-  async generateSummary(pdfText: string): Promise<any> {
-    try {
-      const response = await this.authenticatedRequest('/api/ai/generate-summary', {
-        method: 'POST',
-        body: JSON.stringify({ pdf_text: pdfText }),
-      });
+  async generateSummary(documentId: string, pdfText: string): Promise<any> {
+    const response = await this.authenticatedRequest('/api/ai/generate-summary', {
+      method: 'POST',
+      body: JSON.stringify({ document_id: documentId, pdf_text: pdfText }),
+    });
 
-      if (!response.ok) {
-        let errorMessage = 'Summary generation failed';
-        try {
-          const error = await response.json();
-          errorMessage = error.detail || errorMessage;
-        } catch {
-          // If JSON parsing fails, use the default error message
-        }
-        throw new Error(errorMessage);
+    if (!response.ok) {
+      let errorDetail = 'Summary generation failed';
+      try {
+        const error = await response.json();
+        errorDetail = error.detail || error.message || errorDetail;
+      } catch {
+        const text = await response.text().catch(() => '');
+        errorDetail = text || errorDetail;
       }
-
-      return await response.json();
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message.includes('Summary generation') || 
-            error.message.includes('Network error') ||
-            error.message.includes('Session expired')) {
-          throw error;
-        }
-        throw new Error(`Summary generation failed: ${error.message}`);
-      }
-      throw new Error('Summary generation failed due to an unexpected error');
+      throw new Error(errorDetail);
     }
   }
 
-  async validateField(fieldId: string, fieldValue: string, pdfText: string): Promise<any> {
-    try {
-      const response = await this.authenticatedRequest('/api/ai/validate-field', {
-        method: 'POST',
-        body: JSON.stringify({
-          field_id: fieldId,
-          field_value: fieldValue,
-          pdf_text: pdfText,
-        }),
-      });
+  async validateField(documentId: string, fieldId: string, fieldValue: string, pdfText: string): Promise<any> {
+    const response = await this.authenticatedRequest('/api/ai/validate-field', {
+      method: 'POST',
+      body: JSON.stringify({
+        document_id: documentId,
+        field_id: fieldId,
+        field_value: fieldValue,
+        pdf_text: pdfText,
+      }),
+    });
 
-      if (!response.ok) {
-        let errorMessage = 'Field validation failed';
-        try {
-          const error = await response.json();
-          errorMessage = error.detail || errorMessage;
-        } catch {
-          // If JSON parsing fails, use the default error message
-        }
-        throw new Error(errorMessage);
+    if (!response.ok) {
+      let errorDetail = 'Field validation failed';
+      try {
+        const error = await response.json();
+        errorDetail = error.detail || error.message || errorDetail;
+      } catch {
+        const text = await response.text().catch(() => '');
+        errorDetail = text || errorDetail;
       }
-
-      return await response.json();
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message.includes('Field validation') || 
-            error.message.includes('Network error') ||
-            error.message.includes('Session expired')) {
-          throw error;
-        }
-        throw new Error(`Field validation failed: ${error.message}`);
-      }
-      throw new Error('Field validation failed due to an unexpected error');
+      throw new Error(errorDetail);
     }
   }
 
-  async findMetadata(pdfText: string): Promise<any> {
-    try {
-      const response = await this.authenticatedRequest('/api/ai/find-metadata', {
-        method: 'POST',
-        body: JSON.stringify({ pdf_text: pdfText }),
-      });
+  async findMetadata(documentId: string, pdfText: string): Promise<any> {
+    const response = await this.authenticatedRequest('/api/ai/find-metadata', {
+      method: 'POST',
+      body: JSON.stringify({ document_id: documentId, pdf_text: pdfText }),
+    });
 
-      if (!response.ok) {
-        let errorMessage = 'Metadata search failed';
-        try {
-          const error = await response.json();
-          errorMessage = error.detail || errorMessage;
-        } catch {
-          // If JSON parsing fails, use the default error message
-        }
-        throw new Error(errorMessage);
+    if (!response.ok) {
+      let errorDetail = 'Metadata search failed';
+      try {
+        const error = await response.json();
+        errorDetail = error.detail || error.message || errorDetail;
+      } catch {
+        const text = await response.text().catch(() => '');
+        errorDetail = text || errorDetail;
       }
-
-      return await response.json();
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message.includes('Metadata search') || 
-            error.message.includes('Network error') ||
-            error.message.includes('Session expired')) {
-          throw error;
-        }
-        throw new Error(`Metadata search failed: ${error.message}`);
-      }
-      throw new Error('Metadata search failed due to an unexpected error');
+      throw new Error(errorDetail);
     }
   }
 
-  async extractTables(pdfText: string): Promise<any> {
-    try {
-      const response = await this.authenticatedRequest('/api/ai/extract-tables', {
-        method: 'POST',
-        body: JSON.stringify({ pdf_text: pdfText }),
-      });
+  async extractTables(documentId: string, pdfText: string): Promise<any> {
+    const response = await this.authenticatedRequest('/api/ai/extract-tables', {
+      method: 'POST',
+      body: JSON.stringify({ document_id: documentId, pdf_text: pdfText }),
+    });
 
-      if (!response.ok) {
-        let errorMessage = 'Table extraction failed';
-        try {
-          const error = await response.json();
-          errorMessage = error.detail || errorMessage;
-        } catch {
-          // If JSON parsing fails, use the default error message
-        }
-        throw new Error(errorMessage);
+    if (!response.ok) {
+      let errorDetail = 'Table extraction failed';
+      try {
+        const error = await response.json();
+        errorDetail = error.detail || error.message || errorDetail;
+      } catch {
+        const text = await response.text().catch(() => '');
+        errorDetail = text || errorDetail;
       }
-
-      return await response.json();
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message.includes('Table extraction') || 
-            error.message.includes('Network error') ||
-            error.message.includes('Session expired')) {
-          throw error;
-        }
-        throw new Error(`Table extraction failed: ${error.message}`);
-      }
-      throw new Error('Table extraction failed due to an unexpected error');
+      throw new Error(errorDetail);
     }
   }
 
-  async analyzeImage(imageBase64: string, prompt: string): Promise<any> {
-    try {
-      const response = await this.authenticatedRequest('/api/ai/analyze-image', {
-        method: 'POST',
-        body: JSON.stringify({
-          image_base64: imageBase64,
-          prompt: prompt,
-        }),
-      });
+  async analyzeImage(documentId: string, imageBase64: string, prompt: string): Promise<any> {
+    const response = await this.authenticatedRequest('/api/ai/analyze-image', {
+      method: 'POST',
+      body: JSON.stringify({
+        document_id: documentId,
+        image_base64: imageBase64,
+        prompt: prompt,
+      }),
+    });
 
-      if (!response.ok) {
-        let errorMessage = 'Image analysis failed';
-        try {
-          const error = await response.json();
-          errorMessage = error.detail || errorMessage;
-        } catch {
-          // If JSON parsing fails, use the default error message
-        }
-        throw new Error(errorMessage);
+    if (!response.ok) {
+      let errorDetail = 'Image analysis failed';
+      try {
+        const error = await response.json();
+        errorDetail = error.detail || error.message || errorDetail;
+      } catch {
+        const text = await response.text().catch(() => '');
+        errorDetail = text || errorDetail;
       }
-
-      return await response.json();
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message.includes('Image analysis') || 
-            error.message.includes('Network error') ||
-            error.message.includes('Session expired')) {
-          throw error;
-        }
-        throw new Error(`Image analysis failed: ${error.message}`);
-      }
-      throw new Error('Image analysis failed due to an unexpected error');
+      throw new Error(errorDetail);
     }
   }
 
-  async deepAnalysis(pdfText: string, prompt: string): Promise<any> {
-    try {
-      const response = await this.authenticatedRequest('/api/ai/deep-analysis', {
-        method: 'POST',
-        body: JSON.stringify({
-          pdf_text: pdfText,
-          prompt: prompt,
-        }),
-      });
+  async deepAnalysis(documentId: string, pdfText: string, prompt: string): Promise<any> {
+    const response = await this.authenticatedRequest('/api/ai/deep-analysis', {
+      method: 'POST',
+      body: JSON.stringify({
+        document_id: documentId,
+        pdf_text: pdfText,
+        prompt: prompt,
+      }),
+    });
 
-      if (!response.ok) {
-        let errorMessage = 'Deep analysis failed';
-        try {
-          const error = await response.json();
-          errorMessage = error.detail || errorMessage;
-        } catch {
-          // If JSON parsing fails, use the default error message
-        }
-        throw new Error(errorMessage);
+    if (!response.ok) {
+      let errorDetail = 'Deep analysis failed';
+      try {
+        const error = await response.json();
+        errorDetail = error.detail || error.message || errorDetail;
+      } catch {
+        const text = await response.text().catch(() => '');
+        errorDetail = text || errorDetail;
       }
-
-      return await response.json();
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message.includes('Deep analysis') || 
-            error.message.includes('Network error') ||
-            error.message.includes('Session expired')) {
-          throw error;
-        }
-        throw new Error(`Deep analysis failed: ${error.message}`);
-      }
-      throw new Error('Deep analysis failed due to an unexpected error');
+      throw new Error(errorDetail);
     }
   }
 
