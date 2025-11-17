@@ -1,13 +1,16 @@
 /**
  * MedicalAgentBridge.ts
  *
- * Gemini-based implementation of medical research agents
+ * Backend-based implementation of medical research agents
+ * Routes all AI calls through secure backend API
  * Mimics the behavior of the Python multi-agent system using specialized prompts
  */
 
 import type { ExtractedTable } from './TableExtractor';
 import type { ExtractedFigure } from './FigureExtractor';
 import type { AgentResult } from './AgentOrchestrator';
+import BackendClient from './BackendClient';
+import AuthManager from './AuthManager';
 
 // ==================== AGENT PROMPT TEMPLATES ====================
 
@@ -94,10 +97,7 @@ Provide overall confidence score (0-1).`
 // ==================== MEDICAL AGENT BRIDGE ====================
 
 class MedicalAgentBridge {
-    private geminiApiKey: string;
-
     constructor() {
-        this.geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
     }
 
     /**
@@ -114,8 +114,7 @@ class MedicalAgentBridge {
             // Build agent-specific prompt
             const prompt = this.buildAgentPrompt(agentName, data, dataType);
 
-            // Call Gemini API
-            const response = await this.callGeminiAgent(prompt, agentName);
+            const response = await this.callBackendAgent(prompt, agentName);
 
             // Parse response
             const parsedData = this.parseAgentResponse(response, agentName);
@@ -199,47 +198,15 @@ Respond with JSON:
     }
 
     /**
-     * Call Gemini API with agent prompt
+     * Call backend AI endpoint with agent prompt
+     * Routes through secure backend API instead of direct Gemini calls
      */
-    private async callGeminiAgent(prompt: string, agentName: string): Promise<string> {
-        // Select model based on agent
-        const model = agentName === 'TableExtractorAgent'
-            ? 'gemini-2.0-flash-exp'  // Fast for validation
-            : 'gemini-2.0-flash-thinking-exp-1219';  // Thinking for complex extraction
+    private async callBackendAgent(prompt: string, agentName: string): Promise<string> {
+        await AuthManager.ensureAuthenticated();
 
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.geminiApiKey}`;
-
-        const requestBody = {
-            contents: [{
-                parts: [{ text: prompt }]
-            }],
-            generationConfig: {
-                temperature: 0.2,  // Low temperature for factual extraction
-                topP: 0.8,
-                topK: 40,
-                maxOutputTokens: 2048,
-                responseMimeType: "application/json"
-            }
-        };
-
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
-        });
-
-        if (!response.ok) {
-            throw new Error(`Gemini API error: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        if (!text) {
-            throw new Error('No response from Gemini API');
-        }
-
-        return text;
+        const response = await BackendClient.deepAnalysis('', prompt);
+        
+        return response.analysis;
     }
 
     /**
