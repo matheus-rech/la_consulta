@@ -18,6 +18,8 @@
 import AppStateManager from '../state/AppStateManager';
 import ExtractionTracker from '../data/ExtractionTracker';
 import type { TextChunk } from './CitationService';
+import type { ExtractedTable } from './TableExtractor';
+import type { ExtractedFigure } from './FigureExtractor';
 
 export interface ProvenanceExport {
     document: {
@@ -125,21 +127,21 @@ export const ProvenanceExporter = {
                 isHeading: chunk.isHeading,
                 confidence: 1.0,
             })),
-            tables: tables.map((table: any) => ({
+            tables: tables.map((table: ExtractedTable) => ({
                 id: table.id,
                 pageNum: table.pageNum,
-                title: table.title,
+                title: (table as any).title || '',
                 bbox: table.boundingBox || { x: 0, y: 0, width: 0, height: 0 },
                 headers: table.headers || [],
                 rows: table.rows || [],
                 extractionMethod: table.extractionMethod || 'geometric_detection',
                 csvExport: generateCSV(table),
             })),
-            figures: figures.map((fig: any) => ({
+            figures: figures.map((fig: ExtractedFigure) => ({
                 id: fig.id,
                 pageNum: fig.pageNum,
-                caption: fig.caption,
-                bbox: fig.boundingBox,
+                caption: (fig as any).caption || '',
+                bbox: (fig as any).boundingBox || { x: 0, y: 0, width: fig.width, height: fig.height },
                 width: fig.width,
                 height: fig.height,
                 extractionMethod: fig.extractionMethod || 'operator_list_interception',
