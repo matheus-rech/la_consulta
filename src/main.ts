@@ -691,17 +691,42 @@ async function performSemanticSearch() {
     
     try {
         StatusManager.showLoading(true);
+        // Clear previous highlights
+        TextHighlighter.clearHighlights();
+        
         const results = await SemanticSearchService.search(query);
         
         if (results.length === 0) {
             resultsDiv.innerHTML = '<p style="color: #666; font-style: italic;">No results found</p>';
         } else {
+            // Store results globally for highlighting
+            (window as any).__semanticSearchResults = results;
+            
             resultsDiv.innerHTML = results.map((result, idx) => `
-                <div style="padding: 8px; margin: 4px 0; background: white; border-left: 3px solid #0288d1; border-radius: 4px; cursor: pointer;" onclick="window.ClinicalExtractor.jumpToPage(${result.pageNum})">
+                <div style="padding: 8px; margin: 4px 0; background: white; border-left: 3px solid #0288d1; border-radius: 4px; cursor: pointer;" 
+                     onclick="window.ClinicalExtractor.jumpToSemanticResult(${idx})"
+                     onmouseover="this.style.background='#f0f0f0'"
+                     onmouseout="this.style.background='white'">
                     <div style="font-size: 12px; color: #666;">Result ${idx + 1} • Page ${result.pageNum} • Score: ${result.score.toFixed(2)}</div>
                     <div style="margin-top: 4px;">${result.text.substring(0, 150)}${result.text.length > 150 ? '...' : ''}</div>
                 </div>
             `).join('');
+            
+            // Highlight results on current page
+            const state = AppStateManager.getState();
+            const currentPage = state.currentPage || 1;
+            const resultsOnCurrentPage = results.filter(r => r.pageNum === currentPage);
+            
+            resultsOnCurrentPage.forEach(result => {
+                if (result.bbox) {
+                    TextHighlighter.highlightBoundingBox(result.bbox, {
+                        color: 'rgba(255, 255, 0, 0.3)',
+                        borderColor: 'rgba(255, 200, 0, 0.6)',
+                        borderWidth: 2,
+                        flash: false,
+                    });
+                }
+            });
         }
         
         StatusManager.show(`Found ${results.length} results`, 'success');
@@ -724,6 +749,48 @@ async function jumpToPage(pageNum: number) {
     }
     
     await PDFRenderer.renderPage(state.pdfDoc, pageNum);
+    
+    // Highlight search results on this page if available
+    const results = SearchService.currentResults.filter(r => r.page === pageNum);
+    if (results.length > 0) {
+        SearchService.highlightResults(pageNum);
+    }
+}
+
+/**
+ * Jump to semantic search result and highlight it
+ */
+async function jumpToSemanticResult(resultIndex: number) {
+    const results = (window as any).__semanticSearchResults as any[];
+    if (!results || !results[resultIndex]) {
+        StatusManager.show('Search result not found', 'warning');
+        return;
+    }
+    
+    const result = results[resultIndex];
+    const state = AppStateManager.getState();
+    
+    if (!state.pdfDoc) {
+        StatusManager.show('No PDF loaded', 'warning');
+        return;
+    }
+    
+    // Clear previous highlights
+    TextHighlighter.clearHighlights();
+    
+    // Jump to page
+    await PDFRenderer.renderPage(state.pdfDoc, result.pageNum);
+    
+    // Highlight this specific result
+    if (result.bbox) {
+        TextHighlighter.highlightBoundingBox(result.bbox, {
+            color: 'rgba(255, 235, 59, 0.6)',
+            borderColor: 'rgba(255, 193, 7, 1)',
+            borderWidth: 3,
+            flash: true,
+            scrollIntoView: true,
+        });
+    }
 }
 
 /**
@@ -851,6 +918,7 @@ function exposeWindowAPI() {
         toggleSemanticSearch,
         performSemanticSearch,
         jumpToPage,
+        jumpToSemanticResult,
         toggleAnnotationTools,
         setAnnotationTool,
         configureBackendProxy,
