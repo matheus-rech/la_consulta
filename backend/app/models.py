@@ -3,7 +3,7 @@ In-memory database models for the application
 """
 from datetime import datetime
 from typing import Dict, List, Optional, Any
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, validator
 import uuid
 
 
@@ -21,6 +21,17 @@ class UserCreate(BaseModel):
     """User creation request"""
     email: EmailStr
     password: str
+    
+    @validator('password')
+    def validate_password(cls, v):
+        """Validate password strength"""
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        if not any(c.isdigit() for c in v):
+            raise ValueError('Password must contain at least one digit')
+        if not any(c.isalpha() for c in v):
+            raise ValueError('Password must contain at least one letter')
+        return v
 
 
 class UserResponse(BaseModel):
