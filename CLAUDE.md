@@ -60,12 +60,12 @@ npm run dev -- --debug
 
 ## Modular Architecture (Post-Refactoring + Multi-Agent Pipeline + Production Features)
 
-The codebase has evolved from a 2,000+ line monolith into **33 specialized modules** organized into **7 directories**, with a complete multi-agent AI pipeline, citation provenance system, error recovery, testing infrastructure, and backend integration.
+The codebase has evolved from a 2,000+ line monolith into **37 specialized modules** organized into **7 directories**, with a complete multi-agent AI pipeline, citation provenance system, error recovery, testing infrastructure, and backend integration.
 
 ### Directory Structure
 ```
 src/
-├── main.ts                          # Entry point & orchestration (947 lines) ⭐ UPDATED
+├── main.ts                          # Entry point & orchestration (959 lines) ⭐ UPDATED
 ├── types/
 │   ├── index.ts                     # TypeScript interfaces (extended with citations)
 │   └── window.d.ts                  # Window API type definitions
@@ -93,10 +93,12 @@ src/
 │   ├── ExportManager.ts             # Data export (210 lines)
 │   ├── FigureExtractor.ts           # PDF operator interception (256 lines)
 │   ├── MedicalAgentBridge.ts        # Gemini-based medical agents (265 lines)
+│   ├── ProvenanceExporter.ts        # Provenance data export (180+ lines) ⭐ NEW
 │   ├── SamplePDFService.ts          # Sample PDF management (206 lines) ⭐ NEW
 │   ├── SearchService.ts             # Search functionality (220 lines) ⭐ NEW
 │   ├── SemanticSearchService.ts     # Intelligent TF-IDF search (355 lines) ⭐ NEW
 │   ├── TableExtractor.ts            # Geometric table detection (341 lines)
+│   ├── TextHighlighter.ts           # Text highlighting utilities (150+ lines) ⭐ NEW
 │   └── TextStructureService.ts      # Text structure analysis (302 lines) ⭐ NEW
 └── utils/
     ├── CircuitBreaker.ts            # Fault tolerance pattern (140+ lines) ⭐ NEW
@@ -115,13 +117,14 @@ backend/                             # Python FastAPI backend ⭐ NEW
 └── README.md                        # Backend documentation
 
 tests/                               # Frontend test suite ⭐ NEW
-├── unit/                            # Unit tests (6 test files)
+├── unit/                            # Unit tests (7 test files)
 │   ├── AppStateManager.test.ts
 │   ├── AnnotationService.test.ts
 │   ├── BackendProxyService.test.ts
 │   ├── ExtractionTracker.test.ts
 │   ├── SecurityUtils.test.ts
-│   └── SemanticSearchService.test.ts
+│   ├── SemanticSearchService.test.ts
+│   └── TextHighlighter.test.ts
 ├── e2e/                             # End-to-end tests
 │   └── complete-workflow.test.ts
 ├── setup.ts                         # Jest configuration
@@ -129,13 +132,15 @@ tests/                               # Frontend test suite ⭐ NEW
 ```
 
 **Code Statistics:**
-- **Total Modules:** 33 TypeScript files (was 20)
-- **main.ts:** 947 lines (was 707) - +240 lines for new integrations
-- **New Services (9):** Citation, Annotation, Search, Semantic Search, Backend Client, Backend Proxy, Auth, Sample PDF, Text Structure
+- **Total Modules:** 37 TypeScript files (was 20)
+- **main.ts:** 959 lines (was 707) - +252 lines for new integrations
+- **Services:** 17 total (AIService, AgentOrchestrator, AnnotationService, AuthManager, BackendClient, BackendProxyService, CitationService, ExportManager, FigureExtractor, MedicalAgentBridge, ProvenanceExporter, SamplePDFService, SearchService, SemanticSearchService, TableExtractor, TextHighlighter, TextStructureService)
+- **New Services (11):** Citation, Annotation, Search, Semantic Search, Backend Client, Backend Proxy, Auth, Sample PDF, Text Structure, Provenance Exporter, Text Highlighter
 - **New Utilities (4):** Circuit Breaker, Error Boundary, Error Recovery, LRU Cache
-- **Testing:** 7 test files (6 unit + 1 e2e)
+- **Testing:** 8 test files (7 unit + 1 e2e)
 - **Backend:** Python FastAPI backend with complete API
 - **Documentation:** 30+ markdown guides (2,000+ lines total)
+- **Total Code:** ~10,600 lines of TypeScript
 
 ---
 
@@ -1275,6 +1280,116 @@ The Excel export is the primary format for systematic review workflows. It gener
 
 Excel files can be easily merged for meta-analysis using Excel, R, Python, or statistical software. For aggregating data from multiple papers, simply combine Excel exports using your preferred analysis tool.
 
+### ProvenanceExporter (`src/services/ProvenanceExporter.ts`)
+
+**Purpose:** Export extraction data with complete coordinate-level provenance
+
+**Features:**
+- Document metadata (filename, pages, extraction date)
+- Text chunks with bounding box coordinates
+- Tables with structural data and coordinates
+- Figures with image data and coordinates
+- Citations with sentence-level provenance
+- Multi-agent analysis results with confidence scores
+
+**Main Function:**
+```typescript
+import ProvenanceExporter from './services/ProvenanceExporter';
+
+// Export complete provenance data
+const provenanceData = ProvenanceExporter.exportProvenance({
+    includeTextChunks: true,
+    includeTables: true,
+    includeFigures: true,
+    includeCitations: true,
+    includeAgentResults: true
+});
+
+// Returns ProvenanceExport object with:
+interface ProvenanceExport {
+    document: { filename, totalPages, extractionDate };
+    textChunks: Array<{ index, text, pageNum, bbox, confidence }>;
+    tables: Array<{ id, pageNum, title, headers, rows, bbox }>;
+    figures: Array<{ id, pageNum, dataUrl, bbox }>;
+    citations: Array<{ index, text, pageNum, bbox }>;
+    agentResults: Array<{ agentName, confidence, extractedFields }>;
+}
+```
+
+**Export Formats:**
+- **JSON:** Complete provenance data for archival
+- **CSV:** Flattened coordinate data for analysis
+- **Excel:** Multi-sheet workbook with separate tabs for each data type
+
+**Use Cases:**
+1. **Reproducible Research:** Export complete audit trail with coordinates
+2. **Systematic Reviews:** Track provenance of all extracted data
+3. **Meta-Analysis:** Aggregate data from multiple papers with source verification
+4. **Publication:** Generate supplementary materials with full provenance
+5. **Collaboration:** Share verified extractions with team
+
+### TextHighlighter (`src/services/TextHighlighter.ts`)
+
+**Purpose:** Canvas-based visual highlighting for search results and citations
+
+**Features:**
+- Search result highlighting with yellow overlay
+- Citation highlighting with customizable colors
+- Smooth scrolling to highlighted text
+- Flash animations for emphasis
+- Multiple simultaneous highlights
+- Automatic cleanup of highlight overlays
+
+**Main Functions:**
+```typescript
+import TextHighlighter from './services/TextHighlighter';
+
+// Configure during app initialization
+TextHighlighter.configure({
+    container: '.pdf-page' // or HTMLElement
+});
+
+// Highlight text chunk (e.g., citation)
+TextHighlighter.highlightTextChunk(textChunk, {
+    color: 'rgba(255, 255, 0, 0.3)',    // Yellow semi-transparent
+    borderColor: 'rgba(255, 200, 0, 0.6)',
+    borderWidth: 2,
+    flash: true,                         // Animate on first appearance
+    scrollIntoView: true                 // Scroll to highlight
+});
+
+// Highlight search results
+TextHighlighter.highlightSearchResults(results, {
+    color: 'rgba(255, 255, 0, 0.3)'
+});
+
+// Clear all highlights
+TextHighlighter.clearAllHighlights();
+```
+
+**Highlight Options:**
+```typescript
+interface HighlightOptions {
+    color?: string;              // Fill color (default: yellow)
+    borderColor?: string;        // Border color (default: orange)
+    borderWidth?: number;        // Border width in pixels (default: 2)
+    flash?: boolean;             // Animate on appearance (default: false)
+    scrollIntoView?: boolean;    // Scroll to highlight (default: true)
+}
+```
+
+**Integration Points:**
+- **CitationService:** Highlight cited sentences when clicked
+- **SearchService:** Highlight search results in PDF
+- **SemanticSearchService:** Highlight TF-IDF ranked results
+- **Manual Selection:** Highlight user-selected text
+
+**Visual Behavior:**
+- Highlights rendered as absolutely positioned divs over PDF canvas
+- Z-index management ensures highlights appear above PDF but below UI controls
+- Flash animation: 3 pulses over 600ms for emphasis
+- Smooth scroll with offset to keep highlighted text centered
+
 ---
 
 ## Data Persistence
@@ -1541,16 +1656,18 @@ localStorage.getItem('clinical_extractions_simple')
 ## Known Issues & Limitations
 
 ### Current State (November 2025 - Production-Ready Features Complete)
-- ✅ Modular architecture complete (33 modules, was 20)
+- ✅ Modular architecture complete (37 modules, was 20)
 - ✅ Multi-agent AI pipeline operational (6 specialized agents)
 - ✅ Enterprise-grade citation provenance system
 - ✅ Error recovery & crash detection implemented
-- ✅ Testing infrastructure (Jest + 7 test suites)
+- ✅ Testing infrastructure (Jest + 8 test files)
 - ✅ Backend integration (Python FastAPI)
 - ✅ Semantic search with TF-IDF
 - ✅ PDF annotation system
 - ✅ Geometric figure & table extraction
 - ✅ Bounding box provenance visualization
+- ✅ Provenance export system (ProvenanceExporter)
+- ✅ Text highlighting utilities (TextHighlighter)
 - ✅ All 40+ functions exposed to Window API (was 32)
 - ✅ Dependency injection implemented
 - ✅ Clean TypeScript compilation
@@ -1701,7 +1818,9 @@ Historical documentation preserved for reference but may be outdated:
 
 **Export & Persistence:**
 - **Export:** `services/ExportManager.ts`
+- **Provenance Export:** `services/ProvenanceExporter.ts` ⭐ NEW
 - **Samples:** `services/SamplePDFService.ts` ⭐ NEW
+- **Text Highlighting:** `services/TextHighlighter.ts` ⭐ NEW
 
 **Utilities:**
 - **Helpers:** `utils/helpers.ts`
@@ -1892,6 +2011,20 @@ const results = await SemanticSearchService.search(query, options);
 - Caching beneficial
 - Rate limiting required
 - Production-grade reliability needed
+
+**Use `ProvenanceExporter` when:**
+- Need complete coordinate-level provenance export
+- Exporting for systematic reviews or meta-analysis
+- Generating supplementary materials with audit trail
+- Sharing verified extractions with team
+- Archiving extraction results with full metadata
+
+**Use `TextHighlighter` when:**
+- Visual highlighting of search results needed
+- Citation highlighting on click required
+- Need smooth scrolling to specific text
+- Want flash animations for emphasis
+- Managing multiple simultaneous highlights
 
 ---
 
