@@ -119,24 +119,19 @@ Anthropic Claude model to use (verified stable model).
 
 ### Testing Fallback
 
-To test the fallback system:
+To test the fallback system, the most reliable method is to use the `FORCE_FALLBACK` environment variable.
 
-1. **Set invalid primary API key** to force primary failure:
-   ```bash
-   GEMINI_API_KEY=invalid_key
-   ANTHROPIC_API_KEY=your_valid_anthropic_key
-   ```
+1.  **Force the fallback provider**:
+    This method tests the fallback provider directly without needing to simulate a primary provider failure.
+    ```bash
+    # Ensure you have a valid ANTHROPIC_API_KEY
+    FORCE_FALLBACK=true
+    ```
+    With this setting, all AI requests will be sent directly to the `LLM_FALLBACK` provider.
 
-2. **Force fallback provider** without breaking primary:
-   ```bash
-   FORCE_FALLBACK=true
-   ```
+2.  **Monitor logs** to confirm the fallback provider is used.
 
-3. **Monitor logs** to see fallback in action:
-   ```
-   Primary provider (gemini) failed: 429 Quota exceeded
-   Fallback provider (anthropic) succeeded after primary failure
-   ```
+(Optional) To test the automatic failover on a real error, you would need to simulate a retryable error like a rate limit (429) or a temporary server error (500/503), which is harder to reproduce reliably during development.
 
 ## API Endpoints
 
