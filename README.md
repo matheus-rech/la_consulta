@@ -1,16 +1,28 @@
 <div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 
-# Clinical Extractor
+```
+╔══════════════════════════════════════════════════════════════════════════╗
+║                                                                          ║
+║                      🏥  CLINICAL EXTRACTOR  📊                          ║
+║                                                                          ║
+║          AI-Powered Systematic Review Platform for Medical Research      ║
+║                                                                          ║
+╚══════════════════════════════════════════════════════════════════════════╝
+```
 
-**Enterprise-grade clinical data extraction platform for systematic review of medical research**
+### **Professional Clinical Data Extraction & Analysis Platform**
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
+*Transform medical research papers into structured, actionable data with multi-agent AI intelligence*
+
+---
+
+[![License](https://img.shields.io/badge/License-Apache%202.0-2e7d32.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-0277bd.svg)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-5.0-646CFF.svg)](https://vitejs.dev/)
-[![Gemini AI](https://img.shields.io/badge/Gemini-2.5-4285F4.svg)](https://ai.google.dev/)
+[![AI Powered](https://img.shields.io/badge/AI-Multi--Agent-9c27b0.svg)](https://ai.google.dev/)
+[![Medical](https://img.shields.io/badge/Domain-Medical%20Research-d32f2f.svg)](#)
 
-[Features](#features) • [Quick Start](#quick-start) • [Documentation](#documentation) • [Architecture](#architecture) • [Contributing](#contributing)
+[🚀 Quick Start](#quick-start) • [✨ Features](#features) • [📚 Documentation](#documentation) • [🏗️ Architecture](#architecture) • [🤝 Contributing](#contributing)
 
 </div>
 
