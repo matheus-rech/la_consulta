@@ -9,6 +9,14 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
     
     GEMINI_API_KEY: str
+    ANTHROPIC_API_KEY: str = ""
+    
+    GEMINI_MODEL: str = "gemini-1.5-flash-latest"
+    ANTHROPIC_MODEL: str = "claude-3-5-sonnet-20241022"
+    
+    LLM_PRIMARY: str = "gemini"
+    LLM_FALLBACK: str = "anthropic"
+    FORCE_FALLBACK: bool = False
     
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
