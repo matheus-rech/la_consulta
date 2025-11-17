@@ -1,306 +1,98 @@
 """
-In-memory database models for the application
+Database models for Clinical Extractor
 """
-from datetime import datetime
-from typing import Dict, List, Optional, Any
-from pydantic import BaseModel, EmailStr, validator
-import uuid
+from sqlalchemy import Column, Integer, String, Text, DateTime, Float, Boolean, ForeignKey, JSON
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+from app.database import Base
 
 
-
-class User(BaseModel):
-    """User model"""
-    id: str
-    email: EmailStr
-    password_hash: str
-    created_at: datetime
-    updated_at: datetime
-
-
-class UserCreate(BaseModel):
-    """User creation request"""
-    email: EmailStr
-    password: str
+class User(Base):
+    """User model for authentication"""
+    __tablename__ = "users"
     
-    @validator('password')
-    def validate_password(cls, v):
-        """Validate password strength"""
-        if len(v) < 8:
-            raise ValueError('Password must be at least 8 characters long')
-        if not any(c.isdigit() for c in v):
-            raise ValueError('Password must contain at least one digit')
-        if not any(c.isalpha() for c in v):
-            raise ValueError('Password must contain at least one letter')
-        return v
-
-
-class UserResponse(BaseModel):
-    """User response (without password)"""
-    id: str
-    email: EmailStr
-    created_at: datetime
-
-
-class Token(BaseModel):
-    """JWT token response"""
-    access_token: str
-    token_type: str = "bearer"
-
-
-class TokenData(BaseModel):
-    """Token payload data"""
-    email: Optional[str] = None
-
-
-
-class Document(BaseModel):
-    """Document model"""
-    id: str
-    user_id: str
-    filename: str
-    total_pages: int
-    upload_date: datetime
-    pdf_data: str  # Base64 encoded PDF data
-    metadata: Dict[str, Any] = {}
-
-
-class DocumentCreate(BaseModel):
-    """Document creation request"""
-    filename: str
-    total_pages: int
-    pdf_data: str
-    metadata: Dict[str, Any] = {}
-
-
-class DocumentResponse(BaseModel):
-    """Document response (without PDF data)"""
-    id: str
-    user_id: str
-    filename: str
-    total_pages: int
-    upload_date: datetime
-    metadata: Dict[str, Any]
-
-
-class DocumentDetail(BaseModel):
-    """Document detail response (with PDF data)"""
-    id: str
-    user_id: str
-    filename: str
-    total_pages: int
-    upload_date: datetime
-    pdf_data: str
-    metadata: Dict[str, Any]
-
-
-
-class Coordinates(BaseModel):
-    """Coordinates for text extraction"""
-    x: float
-    y: float
-    width: float
-    height: float
-
-
-class Extraction(BaseModel):
-    """Extraction model"""
-    id: str
-    document_id: str
-    user_id: str
-    field_name: str
-    text: str
-    page: int
-    coordinates: Coordinates
-    method: str  # 'manual', 'gemini-pico', 'gemini-summary', etc.
-    timestamp: datetime
-
-
-class ExtractionCreate(BaseModel):
-    """Extraction creation request"""
-    document_id: str
-    field_name: str
-    text: str
-    page: int
-    coordinates: Coordinates
-    method: str
-
-
-class ExtractionResponse(BaseModel):
-    """Extraction response"""
-    id: str
-    document_id: str
-    user_id: str
-    field_name: str
-    text: str
-    page: int
-    coordinates: Coordinates
-    method: str
-    timestamp: datetime
-
-
-
-class Annotation(BaseModel):
-    """Annotation model"""
-    id: str
-    document_id: str
-    user_id: str
-    page_num: int
-    type: str  # 'highlight', 'note', 'rectangle', 'circle', 'arrow', 'freehand'
-    coordinates: Dict[str, Any]
-    content: str
-    color: str
-    created_at: datetime
-
-
-class AnnotationCreate(BaseModel):
-    """Annotation creation request"""
-    document_id: str
-    page_num: int
-    type: str
-    coordinates: Dict[str, Any]
-    content: str
-    color: str
-
-
-class AnnotationUpdate(BaseModel):
-    """Annotation update request"""
-    coordinates: Optional[Dict[str, Any]] = None
-    content: Optional[str] = None
-    color: Optional[str] = None
-
-
-class AnnotationResponse(BaseModel):
-    """Annotation response"""
-    id: str
-    document_id: str
-    user_id: str
-    page_num: int
-    type: str
-    coordinates: Dict[str, Any]
-    content: str
-    color: str
-    created_at: datetime
-
-
-
-class PICORequest(BaseModel):
-    """PICO-T generation request"""
-    document_id: str
-    pdf_text: str
-
-
-class PICOResponse(BaseModel):
-    """PICO-T generation response"""
-    population: str
-    intervention: str
-    comparator: str
-    outcomes: str
-    timing: str
-    study_type: str
-
-
-class SummaryRequest(BaseModel):
-    """Summary generation request"""
-    document_id: str
-    pdf_text: str
-
-
-class SummaryResponse(BaseModel):
-    """Summary generation response"""
-    summary: str
-
-
-class ValidationRequest(BaseModel):
-    """Field validation request"""
-    document_id: str
-    field_id: str
-    field_value: str
-    pdf_text: str
-
-
-class ValidationResponse(BaseModel):
-    """Field validation response"""
-    is_supported: bool
-    quote: str
-    confidence: float
-
-
-class MetadataRequest(BaseModel):
-    """Metadata extraction request"""
-    document_id: str
-    pdf_text: str
-
-
-class MetadataResponse(BaseModel):
-    """Metadata extraction response"""
-    doi: Optional[str] = None
-    pmid: Optional[str] = None
-    journal: Optional[str] = None
-    year: Optional[int] = None
-
-
-class TableExtractionRequest(BaseModel):
-    """Table extraction request"""
-    document_id: str
-    pdf_text: str
-
-
-class TableData(BaseModel):
-    """Table data structure"""
-    title: str
-    description: str
-    data: List[List[str]]
-
-
-class TableExtractionResponse(BaseModel):
-    """Table extraction response"""
-    tables: List[TableData]
-
-
-class ImageAnalysisRequest(BaseModel):
-    """Image analysis request"""
-    document_id: str
-    image_base64: str
-    prompt: str
-
-
-class ImageAnalysisResponse(BaseModel):
-    """Image analysis response"""
-    analysis: str
-
-
-class DeepAnalysisRequest(BaseModel):
-    """Deep analysis request"""
-    document_id: str
-    pdf_text: str
-    prompt: str
-
-
-class DeepAnalysisResponse(BaseModel):
-    """Deep analysis response"""
-    analysis: str
-
-
-
-class InMemoryDatabase:
-    """Simple in-memory database for proof of concept"""
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    username = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
-    def __init__(self):
-        self.users: Dict[str, User] = {}
-        self.documents: Dict[str, Document] = {}
-        self.extractions: Dict[str, Extraction] = {}
-        self.annotations: Dict[str, Annotation] = {}
-        
-        self.users_by_email: Dict[str, str] = {}  # email -> user_id
-        self.documents_by_user: Dict[str, List[str]] = {}  # user_id -> [document_ids]
-        self.extractions_by_document: Dict[str, List[str]] = {}  # document_id -> [extraction_ids]
-        self.extractions_by_user: Dict[str, List[str]] = {}  # user_id -> [extraction_ids]
-        self.annotations_by_document: Dict[str, List[str]] = {}  # document_id -> [annotation_ids]
-        self.annotations_by_user: Dict[str, List[str]] = {}  # user_id -> [annotation_ids]
+    documents = relationship("Document", back_populates="user", cascade="all, delete-orphan")
+    extractions = relationship("Extraction", back_populates="user", cascade="all, delete-orphan")
+
+
+class Document(Base):
+    """PDF document model"""
+    __tablename__ = "documents"
     
-    def generate_id(self) -> str:
-        """Generate a unique ID"""
-        return str(uuid.uuid4())
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    filename = Column(String, nullable=False)
+    file_path = Column(String)  # Cloud storage path
+    file_size = Column(Integer)  # Size in bytes
+    total_pages = Column(Integer)
+    upload_date = Column(DateTime(timezone=True), server_default=func.now())
+    doc_metadata = Column(JSON)  # Store additional metadata
+    
+    user = relationship("User", back_populates="documents")
+    extractions = relationship("Extraction", back_populates="document", cascade="all, delete-orphan")
+    text_chunks = relationship("TextChunk", back_populates="document", cascade="all, delete-orphan")
 
 
-db = InMemoryDatabase()
+class Extraction(Base):
+    """Extraction tracking model"""
+    __tablename__ = "extractions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    document_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
+    field_name = Column(String, nullable=False)
+    text = Column(Text, nullable=False)
+    page = Column(Integer)
+    coordinates = Column(JSON)  # {x, y, width, height}
+    method = Column(String)  # 'manual', 'gemini-pico', 'gemini-summary', etc.
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    
+    user = relationship("User", back_populates="extractions")
+    document = relationship("Document", back_populates="extractions")
+
+
+class TextChunk(Base):
+    """Text chunks with coordinates for provenance"""
+    __tablename__ = "text_chunks"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    document_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
+    chunk_index = Column(Integer, nullable=False)
+    page_number = Column(Integer, nullable=False)
+    text = Column(Text, nullable=False)
+    
+    bbox_x = Column(Float, nullable=False)
+    bbox_y = Column(Float, nullable=False)
+    bbox_width = Column(Float, nullable=False)
+    bbox_height = Column(Float, nullable=False)
+    
+    font_name = Column(String)
+    font_size = Column(Float)
+    is_heading = Column(Boolean, default=False)
+    is_bold = Column(Boolean, default=False)
+    
+    confidence = Column(Float, default=1.0)
+    extraction_method = Column(String, default='pdfjs')
+    
+    document = relationship("Document", back_populates="text_chunks")
+
+
+class APIRequest(Base):
+    """API request tracking for rate limiting"""
+    __tablename__ = "api_requests"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    endpoint = Column(String, nullable=False)
+    method = Column(String, nullable=False)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    response_time_ms = Column(Integer)
+    status_code = Column(Integer)

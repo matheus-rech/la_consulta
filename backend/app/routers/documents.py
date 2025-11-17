@@ -1,79 +1,65 @@
 """
-Document management endpoints
+Document management routes
 """
-from datetime import datetime, timezone
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from sqlalchemy.orm import Session
 from typing import List
-from fastapi import APIRouter, HTTPException, status, Depends
-from ..models import (
-    User, Document, DocumentCreate, DocumentResponse, DocumentDetail, db
-)
-from ..auth import get_current_user
-from ..rate_limiter import rate_limiter
-from ..config import settings
+from app import models, schemas, auth
+from app.database import get_db
+from app.config import get_settings
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
+settings = get_settings()
 
 
-@router.post("", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=schemas.DocumentResponse, status_code=status.HTTP_201_CREATED)
 async def create_document(
-    document_data: DocumentCreate,
-    current_user: User = Depends(get_current_user)
+    document: schemas.DocumentCreate,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
 ):
-    """Upload a new document"""
-    rate_limiter.check_rate_limit(f"documents:{current_user.id}", settings.RATE_LIMIT_PER_MINUTE)
-    
-    document_id = db.generate_id()
-    now = datetime.now(timezone.utc)
-    
-    document = Document(
-        id=document_id,
+    """Create a new document record"""
+    db_document = models.Document(
         user_id=current_user.id,
-        filename=document_data.filename,
-        total_pages=document_data.total_pages,
-        upload_date=now,
-        pdf_data=document_data.pdf_data,
-        metadata=document_data.metadata
-    )
-    
-    db.documents[document_id] = document
-    
-    if current_user.id not in db.documents_by_user:
-        db.documents_by_user[current_user.id] = []
-    db.documents_by_user[current_user.id].append(document_id)
-    
-    return DocumentResponse(
-        id=document.id,
-        user_id=document.user_id,
         filename=document.filename,
         total_pages=document.total_pages,
-        upload_date=document.upload_date,
+        file_size=document.file_size,
         metadata=document.metadata
     )
-
-
-@router.get("", response_model=List[DocumentResponse])
-async def list_documents(current_user: User = Depends(get_current_user)):
-    """List all documents for current user"""
-    document_ids = db.documents_by_user.get(current_user.id, [])
-    documents = [db.documents[doc_id] for doc_id in document_ids if doc_id in db.documents]
     
-    return [
-        DocumentResponse(
-            id=doc.id,
-            user_id=doc.user_id,
-            filename=doc.filename,
-            total_pages=doc.total_pages,
-            upload_date=doc.upload_date,
-            metadata=doc.metadata
-        )
-        for doc in documents
-    ]
+    db.add(db_document)
+    db.commit()
+    db.refresh(db_document)
+    
+    return db_document
 
 
-@router.get("/{document_id}", response_model=DocumentDetail)
-async def get_document(document_id: str, current_user: User = Depends(get_current_user)):
-    """Get specific document with PDF data"""
-    document = db.documents.get(document_id)
+@router.get("/", response_model=List[schemas.DocumentResponse])
+async def list_documents(
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db),
+    skip: int = 0,
+    limit: int = 100
+):
+    """List all documents for current user"""
+    documents = db.query(models.Document).filter(
+        models.Document.user_id == current_user.id
+    ).offset(skip).limit(limit).all()
+    
+    return documents
+
+
+@router.get("/{document_id}", response_model=schemas.DocumentResponse)
+async def get_document(
+    document_id: int,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Get a specific document"""
+    document = db.query(models.Document).filter(
+        models.Document.id == document_id,
+        models.Document.user_id == current_user.id
+    ).first()
     
     if not document:
         raise HTTPException(
@@ -81,27 +67,20 @@ async def get_document(document_id: str, current_user: User = Depends(get_curren
             detail="Document not found"
         )
     
-    if document.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to access this document"
-        )
-    
-    return DocumentDetail(
-        id=document.id,
-        user_id=document.user_id,
-        filename=document.filename,
-        total_pages=document.total_pages,
-        upload_date=document.upload_date,
-        pdf_data=document.pdf_data,
-        metadata=document.metadata
-    )
+    return document
 
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_document(document_id: str, current_user: User = Depends(get_current_user)):
+async def delete_document(
+    document_id: int,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """Delete a document"""
-    document = db.documents.get(document_id)
+    document = db.query(models.Document).filter(
+        models.Document.id == document_id,
+        models.Document.user_id == current_user.id
+    ).first()
     
     if not document:
         raise HTTPException(
@@ -109,32 +88,7 @@ async def delete_document(document_id: str, current_user: User = Depends(get_cur
             detail="Document not found"
         )
     
-    if document.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to delete this document"
-        )
-    
-    del db.documents[document_id]
-    
-    if current_user.id in db.documents_by_user:
-        db.documents_by_user[current_user.id] = [
-            doc_id for doc_id in db.documents_by_user[current_user.id]
-            if doc_id != document_id
-        ]
-    
-    extraction_ids = db.extractions_by_document.get(document_id, [])
-    for extraction_id in extraction_ids:
-        if extraction_id in db.extractions:
-            del db.extractions[extraction_id]
-    if document_id in db.extractions_by_document:
-        del db.extractions_by_document[document_id]
-    
-    annotation_ids = db.annotations_by_document.get(document_id, [])
-    for annotation_id in annotation_ids:
-        if annotation_id in db.annotations:
-            del db.annotations[annotation_id]
-    if document_id in db.annotations_by_document:
-        del db.annotations_by_document[document_id]
+    db.delete(document)
+    db.commit()
     
     return None
