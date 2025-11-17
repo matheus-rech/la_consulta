@@ -1,11 +1,10 @@
 """
-AI proxy endpoints - Securely proxy Gemini API calls
-This is the critical security fix: API key is now server-side only
+AI proxy endpoints - Securely proxy AI API calls with fallback support
+This is the critical security fix: API keys are now server-side only
+Supports Gemini (primary) with Anthropic Claude fallback
 """
 import json
-import base64
 from fastapi import APIRouter, HTTPException, status, Depends
-import google.generativeai as genai
 from ..models import (
     User,
     PICORequest, PICOResponse,
@@ -19,15 +18,14 @@ from ..models import (
 from ..auth import get_current_user
 from ..config import settings
 from ..rate_limiter import rate_limiter
+from ..services.llm import generate_text, parse_json_strict
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
-
-genai.configure(api_key=settings.GEMINI_API_KEY)
 
 
 @router.post("/generate-pico", response_model=PICOResponse)
 async def generate_pico(request: PICORequest, current_user: User = Depends(get_current_user)):
-    """Generate PICO-T extraction using Gemini AI"""
+    """Generate PICO-T extraction using AI with fallback support"""
     rate_limiter.check_rate_limit(f"ai:{current_user.id}", settings.AI_RATE_LIMIT_PER_MINUTE)
     
     # Validate input size (max 1MB of text)
@@ -38,8 +36,6 @@ async def generate_pico(request: PICORequest, current_user: User = Depends(get_c
         )
     
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
-        
         prompt = f"""You are a clinical research data extraction expert. Extract PICO-T elements from this research paper.
 
 DOCUMENT TEXT:
@@ -57,15 +53,14 @@ Extract the following in JSON format:
 
 Return ONLY valid JSON, no additional text."""
 
-        response = model.generate_content(
-            prompt,
-            generation_config={
-                "temperature": 0.2,
-                "response_mime_type": "application/json"
-            }
+        response_text = generate_text(
+            prompt=prompt,
+            require_json=True,
+            temperature=0.2,
+            max_output_tokens=2048
         )
         
-        result = json.loads(response.text)
+        result = parse_json_strict(response_text)
         
         return PICOResponse(**result)
         
@@ -78,12 +73,10 @@ Return ONLY valid JSON, no additional text."""
 
 @router.post("/generate-summary", response_model=SummaryResponse)
 async def generate_summary(request: SummaryRequest, current_user: User = Depends(get_current_user)):
-    """Generate document summary using Gemini AI"""
+    """Generate document summary using AI with fallback support"""
     rate_limiter.check_rate_limit(f"ai:{current_user.id}", settings.AI_RATE_LIMIT_PER_MINUTE)
     
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
-        
         prompt = f"""Summarize the key findings of this clinical research paper in 2-3 paragraphs.
 
 DOCUMENT TEXT:
@@ -94,12 +87,14 @@ Provide a clear, concise summary focusing on:
 2. Main findings and results
 3. Clinical implications"""
 
-        response = model.generate_content(
-            prompt,
-            generation_config={"temperature": 0.3}
+        response_text = generate_text(
+            prompt=prompt,
+            require_json=False,
+            temperature=0.3,
+            max_output_tokens=2048
         )
         
-        return SummaryResponse(summary=response.text)
+        return SummaryResponse(summary=response_text)
         
     except Exception as e:
         raise HTTPException(
@@ -110,12 +105,10 @@ Provide a clear, concise summary focusing on:
 
 @router.post("/validate-field", response_model=ValidationResponse)
 async def validate_field(request: ValidationRequest, current_user: User = Depends(get_current_user)):
-    """Validate extracted field with AI"""
+    """Validate extracted field with AI with fallback support"""
     rate_limiter.check_rate_limit(f"ai:{current_user.id}", settings.AI_RATE_LIMIT_PER_MINUTE)
     
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
-        
         prompt = f"""Validate if the following extracted value is supported by the document.
 
 FIELD: {request.field_id}
@@ -131,15 +124,14 @@ Return JSON:
     "confidence": 0.0-1.0
 }}"""
 
-        response = model.generate_content(
-            prompt,
-            generation_config={
-                "temperature": 0.2,
-                "response_mime_type": "application/json"
-            }
+        response_text = generate_text(
+            prompt=prompt,
+            require_json=True,
+            temperature=0.2,
+            max_output_tokens=2048
         )
         
-        result = json.loads(response.text)
+        result = parse_json_strict(response_text)
         
         return ValidationResponse(**result)
         
@@ -152,12 +144,10 @@ Return JSON:
 
 @router.post("/find-metadata", response_model=MetadataResponse)
 async def find_metadata(request: MetadataRequest, current_user: User = Depends(get_current_user)):
-    """Find document metadata (DOI, PMID, etc.) using Gemini AI"""
+    """Find document metadata (DOI, PMID, etc.) using AI with fallback support"""
     rate_limiter.check_rate_limit(f"ai:{current_user.id}", settings.AI_RATE_LIMIT_PER_MINUTE)
     
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
-        
         prompt = f"""Extract bibliographic metadata from this research paper.
 
 DOCUMENT TEXT:
@@ -173,15 +163,14 @@ Return JSON:
 
 Return null for fields not found."""
 
-        response = model.generate_content(
-            prompt,
-            generation_config={
-                "temperature": 0.1,
-                "response_mime_type": "application/json"
-            }
+        response_text = generate_text(
+            prompt=prompt,
+            require_json=True,
+            temperature=0.1,
+            max_output_tokens=1024
         )
         
-        result = json.loads(response.text)
+        result = parse_json_strict(response_text)
         
         return MetadataResponse(**result)
         
@@ -194,12 +183,10 @@ Return null for fields not found."""
 
 @router.post("/extract-tables", response_model=TableExtractionResponse)
 async def extract_tables(request: TableExtractionRequest, current_user: User = Depends(get_current_user)):
-    """Extract tables from document using Gemini AI"""
+    """Extract tables from document using AI with fallback support"""
     rate_limiter.check_rate_limit(f"ai:{current_user.id}", settings.AI_RATE_LIMIT_PER_MINUTE)
     
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
-        
         prompt = f"""Extract all tables from this research paper.
 
 DOCUMENT TEXT:
@@ -216,15 +203,14 @@ Return JSON array:
     ]
 }}"""
 
-        response = model.generate_content(
-            prompt,
-            generation_config={
-                "temperature": 0.2,
-                "response_mime_type": "application/json"
-            }
+        response_text = generate_text(
+            prompt=prompt,
+            require_json=True,
+            temperature=0.2,
+            max_output_tokens=2048
         )
         
-        result = json.loads(response.text)
+        result = parse_json_strict(response_text)
         
         return TableExtractionResponse(**result)
         
@@ -237,20 +223,19 @@ Return JSON array:
 
 @router.post("/analyze-image", response_model=ImageAnalysisResponse)
 async def analyze_image(request: ImageAnalysisRequest, current_user: User = Depends(get_current_user)):
-    """Analyze image with AI"""
+    """Analyze image with AI with fallback support"""
     rate_limiter.check_rate_limit(f"ai:{current_user.id}", settings.AI_RATE_LIMIT_PER_MINUTE)
     
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        response_text = generate_text(
+            prompt=request.prompt,
+            require_json=False,
+            temperature=0.3,
+            max_output_tokens=2048,
+            image_base64=request.image_base64
+        )
         
-        image_data = base64.b64decode(request.image_base64.split(',')[1] if ',' in request.image_base64 else request.image_base64)
-        
-        response = model.generate_content([
-            request.prompt,
-            {"mime_type": "image/png", "data": image_data}
-        ])
-        
-        return ImageAnalysisResponse(analysis=response.text)
+        return ImageAnalysisResponse(analysis=response_text)
         
     except Exception as e:
         raise HTTPException(
@@ -261,26 +246,23 @@ async def analyze_image(request: ImageAnalysisRequest, current_user: User = Depe
 
 @router.post("/deep-analysis", response_model=DeepAnalysisResponse)
 async def deep_analysis(request: DeepAnalysisRequest, current_user: User = Depends(get_current_user)):
-    """Perform deep analysis with extended thinking"""
+    """Perform deep analysis with AI with fallback support"""
     rate_limiter.check_rate_limit(f"ai:{current_user.id}", settings.AI_RATE_LIMIT_PER_MINUTE)
     
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-1219')
-        
         prompt = f"""{request.prompt}
 
 DOCUMENT TEXT:
 {request.pdf_text[:15000]}"""
 
-        response = model.generate_content(
-            prompt,
-            generation_config={
-                "temperature": 0.3,
-                "max_output_tokens": 2048
-            }
+        response_text = generate_text(
+            prompt=prompt,
+            require_json=False,
+            temperature=0.3,
+            max_output_tokens=2048
         )
         
-        return DeepAnalysisResponse(analysis=response.text)
+        return DeepAnalysisResponse(analysis=response_text)
         
     except Exception as e:
         raise HTTPException(
