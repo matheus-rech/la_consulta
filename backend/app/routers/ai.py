@@ -38,7 +38,7 @@ async def generate_pico(request: PICORequest, current_user: User = Depends(get_c
         )
     
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         prompt = f"""You are a clinical research data extraction expert. Extract PICO-T elements from this research paper.
 
@@ -82,7 +82,7 @@ async def generate_summary(request: SummaryRequest, current_user: User = Depends
     rate_limiter.check_rate_limit(f"ai:{current_user.id}", settings.AI_RATE_LIMIT_PER_MINUTE)
     
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         prompt = f"""Summarize the key findings of this clinical research paper in 2-3 paragraphs.
 
@@ -114,7 +114,7 @@ async def validate_field(request: ValidationRequest, current_user: User = Depend
     rate_limiter.check_rate_limit(f"ai:{current_user.id}", settings.AI_RATE_LIMIT_PER_MINUTE)
     
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         prompt = f"""Validate if the following extracted value is supported by the document.
 
@@ -156,7 +156,7 @@ async def find_metadata(request: MetadataRequest, current_user: User = Depends(g
     rate_limiter.check_rate_limit(f"ai:{current_user.id}", settings.AI_RATE_LIMIT_PER_MINUTE)
     
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         prompt = f"""Extract bibliographic metadata from this research paper.
 
@@ -198,7 +198,7 @@ async def extract_tables(request: TableExtractionRequest, current_user: User = D
     rate_limiter.check_rate_limit(f"ai:{current_user.id}", settings.AI_RATE_LIMIT_PER_MINUTE)
     
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         prompt = f"""Extract all tables from this research paper.
 
@@ -241,7 +241,7 @@ async def analyze_image(request: ImageAnalysisRequest, current_user: User = Depe
     rate_limiter.check_rate_limit(f"ai:{current_user.id}", settings.AI_RATE_LIMIT_PER_MINUTE)
     
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         image_data = base64.b64decode(request.image_base64.split(',')[1] if ',' in request.image_base64 else request.image_base64)
         
@@ -265,7 +265,7 @@ async def deep_analysis(request: DeepAnalysisRequest, current_user: User = Depen
     rate_limiter.check_rate_limit(f"ai:{current_user.id}", settings.AI_RATE_LIMIT_PER_MINUTE)
     
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-1219')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         prompt = f"""{request.prompt}
 
