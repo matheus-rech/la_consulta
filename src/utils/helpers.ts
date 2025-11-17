@@ -53,10 +53,15 @@ export function calculateBoundingBox(items: TextItem[]): Coordinates {
  * @param coords - Coordinates object that may have either format
  * @returns Normalized coordinates with x/y structure
  */
-export function normalizeCoordinates(coords: Coordinates): Coordinates {
+export function normalizeCoordinates(coords: Coordinates = { x: 0, y: 0, width: 0, height: 0 }): Coordinates {
+    const x = coords.x ?? coords.left ?? 0;
+    const y = coords.y ?? coords.top ?? 0;
+
     return {
-        x: coords.x ?? coords.left ?? 0,
-        y: coords.y ?? coords.top ?? 0,
+        x,
+        y,
+        left: coords.left ?? x,
+        top: coords.top ?? y,
         width: coords.width ?? 0,
         height: coords.height ?? 0
     };

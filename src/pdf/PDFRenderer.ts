@@ -16,6 +16,8 @@
 import AppStateManager from '../state/AppStateManager';
 import StatusManager from '../utils/status';
 import { addExtractionMarkersForPage, clearSearchMarkers } from '../utils/helpers';
+import SearchService from '../services/SearchService';
+import AnnotationService from '../services/AnnotationService';
 import type { TextItem } from '../types';
 
 /**
@@ -239,6 +241,11 @@ export const PDFRenderer = {
             // Add page to container
             container.appendChild(pageDiv);
 
+            // Initialize annotation layer and interaction if enabled
+            AnnotationService.initializeLayer(pageNum, pageDiv);
+            AnnotationService.renderAnnotations(pageNum);
+            AnnotationService.syncInteractionLayer(pageNum, pageDiv);
+
             // Store canvas reference for overlay rendering
             PDFRenderer.currentCanvas = canvas;
 
@@ -253,6 +260,9 @@ export const PDFRenderer = {
 
             // Clear any previous search markers
             clearSearchMarkers(state.searchMarkers.map(m => m.element));
+
+            // Re-apply search highlights for the newly rendered page
+            SearchService.highlightResultsForPage(pageNum);
 
             // Render bounding box overlays if enabled
             if (PDFRenderer.showBoundingBoxes) {
@@ -285,7 +295,7 @@ export const PDFRenderer = {
      * - Green: AI extractions
      * - Blue: Standard text
      */
-    renderBoundingBoxes: async (page: PDFJSPage, textItems: PDFTextItem[], scale: number) => {
+    renderBoundingBoxes: async (_page: PDFJSPage, _textItems: PDFTextItem[], scale: number) => {
         if (!PDFRenderer.currentCanvas) return;
 
         const canvas = PDFRenderer.currentCanvas;
@@ -293,39 +303,50 @@ export const PDFRenderer = {
         if (!ctx) return;
 
         const state = AppStateManager.getState();
-        const viewport = page.getViewport({ scale });
 
         // Draw bounding box for each text item
-        textItems.forEach((item, idx) => {
-            // Check if this text was extracted
-            const isExtracted = state.extractions.some(ext =>
-                ext.text.includes(item.text)
-            );
+        const pageNum = AppStateManager.getState().currentPage;
+        const pageChunks = (AppStateManager.getState().textChunks || []).filter(chunk => chunk.pageNum === pageNum);
 
-            // Color-code by extraction status
-            if (isExtracted) {
-                const extraction = state.extractions.find(ext => ext.text.includes(item.text));
-                if (extraction?.method === 'manual') {
-                    ctx.strokeStyle = 'rgba(255, 0, 0, 0.6)';  // Red for manual
-                    ctx.lineWidth = 2;
+        const overlaps = (chunk: any) => {
+            const extraction = state.extractions.find(ext => ext.page === chunk.pageNum && ext.coordinates);
+            if (!extraction) return null;
+            const coords = extraction.coordinates;
+            const ex = coords.x ?? coords.left ?? 0;
+            const ey = coords.y ?? coords.top ?? 0;
+            const ew = coords.width ?? 0;
+            const eh = coords.height ?? 0;
+
+            const chunkRight = chunk.bbox.x + chunk.bbox.width;
+            const chunkBottom = chunk.bbox.y + chunk.bbox.height;
+            const extractionRight = ex + ew;
+            const extractionBottom = ey + eh;
+
+            const intersects = !(ex > chunkRight || extractionRight < chunk.bbox.x || ey > chunkBottom || extractionBottom < chunk.bbox.y);
+            return intersects ? extraction : null;
+        };
+
+        pageChunks.forEach(chunk => {
+            const bbox = chunk.bbox;
+            const extraction = overlaps(chunk);
+
+            if (extraction) {
+                if (extraction.method === 'manual') {
+                    ctx.strokeStyle = 'rgba(255, 0, 0, 0.6)';
                 } else {
-                    ctx.strokeStyle = 'rgba(0, 255, 0, 0.6)';  // Green for AI
-                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = 'rgba(0, 255, 0, 0.6)';
                 }
+                ctx.lineWidth = 2;
             } else {
-                ctx.strokeStyle = 'rgba(100, 100, 255, 0.3)';  // Blue for standard
+                ctx.strokeStyle = 'rgba(100, 100, 255, 0.3)';
                 ctx.lineWidth = 1;
             }
 
-            // Draw rectangle
-            ctx.strokeRect(item.x, item.y, item.width, item.height);
+            ctx.strokeRect(bbox.x * scale, bbox.y * scale, bbox.width * scale, bbox.height * scale);
 
-            // Add index label
-            if (isExtracted) {
-                ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
-                ctx.font = 'bold 10px monospace';
-                ctx.fillText(`[${idx}]`, item.x, item.y - 2);
-            }
+            ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
+            ctx.font = 'bold 10px monospace';
+            ctx.fillText(`[${chunk.index}]`, bbox.x * scale, (bbox.y * scale) - 2);
         });
     },
 
@@ -407,7 +428,12 @@ export const PDFRenderer = {
      */
     cleanup: () => {
         if (PDFRenderer.currentCanvas) {
-            const ctx = PDFRenderer.currentCanvas.getContext('2d');
+            let ctx: CanvasRenderingContext2D | null = null;
+            try {
+                ctx = PDFRenderer.currentCanvas.getContext('2d');
+            } catch (error) {
+                console.warn('Canvas context not available during cleanup.', error);
+            }
             if (ctx) {
                 ctx.clearRect(0, 0, PDFRenderer.currentCanvas.width, PDFRenderer.currentCanvas.height);
             }

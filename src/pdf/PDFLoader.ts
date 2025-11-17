@@ -162,8 +162,26 @@ const PDFLoader = {
         // Optionally, you could report this error to a status manager or telemetry here
       }
 
-      // Convert file to ArrayBuffer for PDF.js
-      const arrayBuffer = await file.arrayBuffer();
+        // Convert file to ArrayBuffer for PDF.js
+        let arrayBuffer: ArrayBuffer;
+        if (file && typeof (file as any).arrayBuffer === 'function') {
+          arrayBuffer = await (file as any).arrayBuffer();
+        } else if (file instanceof Blob) {
+          if (typeof file.arrayBuffer === 'function') {
+            arrayBuffer = await file.arrayBuffer();
+          } else if (typeof FileReader !== 'undefined') {
+            arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as ArrayBuffer);
+              reader.onerror = () => reject(reader.error);
+              reader.readAsArrayBuffer(file);
+            });
+          } else {
+            throw new Error('Unable to read file contents in this environment.');
+          }
+        } else {
+          throw new Error('Unsupported file input. Please provide a File or Blob object.');
+        }
 
       // Configure PDF.js worker (must be set before first getDocument call)
       if (!window.pdfjsLib) {

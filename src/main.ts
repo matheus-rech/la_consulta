@@ -157,14 +157,17 @@ async function searchInPDF() {
             if (results.length === 0) {
                 resultsContainer.innerHTML = '<li>No results found</li>';
             } else {
-                resultsContainer.innerHTML = results.map((result, idx) => `
-                    <li>
-                        <strong>Page ${result.page}</strong> (Result ${idx + 1}/${results.length})<br>
-                        <em>${result.context}</em>
-                    </li>
-                `).join('');
+                resultsContainer.innerHTML = results.map((result, idx) => {
+                    const clickable = typeof result.chunkIndex === 'number';
+                    return `
+                        <li class="search-result" style="${clickable ? 'cursor:pointer;' : ''}" ${clickable ? `onclick="window.ClinicalExtractor.showSearchResult(${result.chunkIndex})"` : ''}>
+                            <strong>Page ${result.page}</strong> (Result ${idx + 1}/${results.length})<br>
+                            <em>${result.context}</em>
+                        </li>
+                    `;
+                }).join('');
                 
-                SearchService.highlightResults(state.currentPage);
+                SearchService.highlightResultsForPage(state.currentPage);
             }
         }
 
@@ -338,6 +341,7 @@ function setupEventListeners() {
     const exportCsvBtn = document.getElementById('export-csv-btn');
     const exportAuditBtn = document.getElementById('export-audit-btn');
     const exportPdfBtn = document.getElementById('export-pdf-btn');
+    const exportProvenanceBtn = document.getElementById('export-provenance-btn');
 
     if (exportExcelBtn) {
         exportExcelBtn.addEventListener('click', () => {
@@ -375,6 +379,14 @@ function setupEventListeners() {
         exportPdfBtn.addEventListener('click', () => {
             if (window.ClinicalExtractor?.exportAnnotatedPDF) {
                 window.ClinicalExtractor.exportAnnotatedPDF();
+            }
+        });
+    }
+
+    if (exportProvenanceBtn) {
+        exportProvenanceBtn.addEventListener('click', () => {
+            if (window.ClinicalExtractor?.downloadProvenanceJSON) {
+                window.ClinicalExtractor.downloadProvenanceJSON();
             }
         });
     }
@@ -424,6 +436,7 @@ async function extractFiguresFromPDF() {
 
         // Update state with extracted figures
         AppStateManager.setState({ extractedFigures: allFigures });
+        updateFigureResults(allFigures);
 
         StatusManager.show(
             `Successfully extracted ${allFigures.length} figures from ${state.pdfDoc.numPages} pages`,
@@ -440,6 +453,52 @@ async function extractFiguresFromPDF() {
         AppStateManager.setState({ isProcessing: false });
         StatusManager.showLoading(false);
     }
+}
+
+function updateFigureResults(figures: any[]): void {
+    const container = document.getElementById('figure-extraction-results');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!figures || figures.length === 0) {
+        container.innerHTML = '<p style="color:#666;">No figures detected in this document.</p>';
+        return;
+    }
+
+    const grid = document.createElement('div');
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(120px, 1fr))';
+    grid.style.gap = '8px';
+
+    figures.forEach((figure: any, index: number) => {
+        const card = document.createElement('div');
+        card.style.border = '1px solid #ececec';
+        card.style.borderRadius = '4px';
+        card.style.padding = '6px';
+        card.style.background = '#fff';
+        card.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
+
+        const thumb = document.createElement('img');
+        thumb.src = figure.dataUrl;
+        thumb.alt = figure.id || `figure-${index + 1}`;
+        thumb.style.width = '100%';
+        thumb.style.height = 'auto';
+        thumb.style.display = 'block';
+        thumb.style.borderRadius = '4px';
+        thumb.loading = 'lazy';
+
+        const caption = document.createElement('div');
+        caption.style.fontSize = '12px';
+        caption.style.marginTop = '4px';
+        caption.textContent = `${figure.id || `Figure ${index + 1}`} • Page ${figure.pageNum}`;
+
+        card.appendChild(thumb);
+        card.appendChild(caption);
+        grid.appendChild(card);
+    });
+
+    container.appendChild(grid);
 }
 
 /**
@@ -567,6 +626,7 @@ async function runFullAIPipeline() {
             extractedFigures: enhancedFigures,
             extractedTables: enhancedTables
         });
+        updateFigureResults(enhancedFigures);
 
         // Step 4: Display results
         displayPipelineResults(enhancedTables, enhancedFigures, pipelineStats);
@@ -697,7 +757,7 @@ async function performSemanticSearch() {
             resultsDiv.innerHTML = '<p style="color: #666; font-style: italic;">No results found</p>';
         } else {
             resultsDiv.innerHTML = results.map((result, idx) => `
-                <div style="padding: 8px; margin: 4px 0; background: white; border-left: 3px solid #0288d1; border-radius: 4px; cursor: pointer;" onclick="window.ClinicalExtractor.jumpToPage(${result.pageNum})">
+                <div style="padding: 8px; margin: 4px 0; background: white; border-left: 3px solid #0288d1; border-radius: 4px; cursor: pointer;" onclick="window.ClinicalExtractor.showSemanticResult(${result.chunkIndex})">
                     <div style="font-size: 12px; color: #666;">Result ${idx + 1} • Page ${result.pageNum} • Score: ${result.score.toFixed(2)}</div>
                     <div style="margin-top: 4px;">${result.text.substring(0, 150)}${result.text.length > 150 ? '...' : ''}</div>
                 </div>
@@ -723,7 +783,50 @@ async function jumpToPage(pageNum: number) {
         return;
     }
     
-    await PDFRenderer.renderPage(state.pdfDoc, pageNum);
+    await PDFRenderer.renderPage(pageNum, TextSelection);
+}
+
+/**
+ * Ensure the chunk for a given index is visible, rendering the correct page if necessary
+ */
+async function ensureChunkVisible(chunkIndex: number) {
+    const state = AppStateManager.getState();
+    const chunk = (state.textChunks || []).find(c => c.index === chunkIndex);
+    if (!chunk) {
+        StatusManager.show('Unable to locate that section of the document.', 'warning');
+        return null;
+    }
+
+    if (chunk.pageNum !== state.currentPage) {
+        await PDFRenderer.renderPage(chunk.pageNum, TextSelection);
+    }
+
+    return chunk;
+}
+
+async function showSearchResult(chunkIndex: number) {
+    if (typeof chunkIndex !== 'number' || chunkIndex < 0) return;
+    const chunk = await ensureChunkVisible(chunkIndex);
+    if (!chunk) return;
+
+    TextHighlighter.highlightChunks([chunkIndex], { flash: true });
+}
+
+async function showSemanticResult(chunkIndex: number) {
+    if (typeof chunkIndex !== 'number' || chunkIndex < 0) return;
+    const chunk = await ensureChunkVisible(chunkIndex);
+    if (!chunk) return;
+
+    TextHighlighter.highlightChunks([chunkIndex], { flash: true });
+}
+
+async function highlightCitation(index: number) {
+    if (typeof index !== 'number' || index < 0) return;
+    const chunk = await ensureChunkVisible(index);
+    if (!chunk) return;
+
+    TextHighlighter.highlightCitation(index);
+    AppStateManager.setState({ activeCitationIndex: index });
 }
 
 /**
@@ -735,16 +838,16 @@ function toggleAnnotationTools() {
         const isVisible = panel.style.display !== 'none';
         panel.style.display = isVisible ? 'none' : 'block';
         
-        if (!isVisible) {
-            const state = AppStateManager.getState();
-            const pdfContainer = document.getElementById('pdf-container');
-            if (state.pdfDoc && pdfContainer) {
-                const canvas = pdfContainer.querySelector('canvas');
-                if (canvas && state.currentPage) {
-                    AnnotationService.initializeLayer(state.currentPage, pdfContainer);
-                    StatusManager.show('Annotation tools enabled. Click on PDF to annotate.', 'info');
-                }
-            }
+        const state = AppStateManager.getState();
+        const pageElement = document.querySelector('.pdf-page') as HTMLElement | null;
+
+        if (!isVisible && pageElement && state.currentPage) {
+            AnnotationService.enableInteraction(pageElement, state.currentPage);
+            AnnotationService.renderAnnotations(state.currentPage);
+            StatusManager.show('Annotation tools enabled. Click and drag on the PDF to annotate.', 'info');
+        } else if (isVisible) {
+            AnnotationService.disableInteraction();
+            StatusManager.show('Annotation tools hidden.', 'info');
         }
     }
 }
@@ -758,6 +861,10 @@ function setAnnotationTool(tool: string) {
     
     AnnotationService.setTool(tool as any);
     AnnotationService.setColor(color as any);
+    
+    if (AnnotationService.interactionLayer) {
+        AnnotationService.interactionLayer.style.cursor = tool === 'note' ? 'pointer' : 'crosshair';
+    }
     
     StatusManager.show(`Annotation tool: ${tool} (${color})`, 'info');
 }
@@ -832,6 +939,8 @@ function exposeWindowAPI() {
         // Search Functions (2)
         toggleSearchInterface,
         searchInPDF,
+        showSearchResult,
+        showSemanticResult,
 
         // New: Figure/Table Extraction & Visualization (4)
         extractFiguresFromPDF,
@@ -854,6 +963,7 @@ function exposeWindowAPI() {
         toggleAnnotationTools,
         setAnnotationTool,
         configureBackendProxy,
+        highlightCitation,
 
         triggerCrashStateSave,
         triggerManualRecovery
