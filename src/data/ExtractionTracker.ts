@@ -22,6 +22,7 @@
 import SecurityUtils from '../utils/security';
 import { normalizeCoordinates } from '../utils/helpers';
 import type { Extraction, ExtractionMethod } from '../types';
+import TraceLogger from '../services/TraceLogger';
 
 // Type definitions for injected dependencies
 interface AppStateManager {
@@ -149,6 +150,15 @@ const ExtractionTracker: ExtractionTrackerType = {
         // Store extraction in array and map
         this.extractions.push(extraction);
         this.fieldMap.set(data.fieldName, extraction);
+
+        // Log to TraceLogger for audit trail
+        TraceLogger.logExtraction(
+            extraction.fieldName,
+            extraction.text,
+            extraction.page,
+            extraction.coordinates,
+            extraction.method
+        );
 
         // Update UI and persistence
         this.updateTraceLog(extraction);

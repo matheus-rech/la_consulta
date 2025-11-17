@@ -147,6 +147,12 @@ class TableExtractor {
     /**
      * Step 4: Find table regions by detecting grid patterns
      * A table is: multiple consecutive rows with aligned columns
+     * 
+     * UPDATED: Stricter detection to reduce false positives
+     * - Minimum 5 columns (was 4)
+     * - Minimum 5 rows (was 3)
+     * - Requires consistent column spacing
+     * - Filters out narrow regions (<250px width)
      */
     private detectTableRegions(rows: TextItem[][]): any[] {
         const tableRegions: any[] = []
@@ -155,8 +161,8 @@ class TableExtractor {
         rows.forEach((row, rowIndex) => {
             const columnPositions = this.detectColumnPositions(row)
 
-            // Check if row is part of a table
-            const hasMultipleColumns = columnPositions.length >= 4
+            // STRICTER: Require at least 5 columns (not 4)
+            const hasMultipleColumns = columnPositions.length >= 5
             const alignsWithTable = currentTable &&
                 this.alignsWithColumns(columnPositions, currentTable.columnPositions)
 
@@ -165,8 +171,13 @@ class TableExtractor {
                 currentTable.rows.push(row)
             } else if (hasMultipleColumns) {
                 // Start new table
-                if (currentTable && currentTable.rows.length >= 3) {
-                    tableRegions.push(currentTable)
+                // STRICTER: Require at least 5 rows (not 3)
+                if (currentTable && currentTable.rows.length >= 5) {
+                    // Additional validation: check table width
+                    const width = this.calculateTableWidth(currentTable.columnPositions)
+                    if (width >= 250) {  // Min 250px wide
+                        tableRegions.push(currentTable)
+                    }
                 }
                 currentTable = {
                     startRow: rowIndex,
@@ -175,19 +186,33 @@ class TableExtractor {
                 }
             } else {
                 // Not a table row - end current table if exists
-                if (currentTable && currentTable.rows.length >= 3) {
-                    tableRegions.push(currentTable)
+                if (currentTable && currentTable.rows.length >= 5) {
+                    const width = this.calculateTableWidth(currentTable.columnPositions)
+                    if (width >= 250) {
+                        tableRegions.push(currentTable)
+                    }
                 }
                 currentTable = null
             }
         })
 
-        // Don't forget the last table
-        if (currentTable && currentTable.rows.length >= 3) {
-            tableRegions.push(currentTable)
+        // Don't forget the last table (with stricter validation)
+        if (currentTable && currentTable.rows.length >= 5) {
+            const width = this.calculateTableWidth(currentTable.columnPositions)
+            if (width >= 250) {
+                tableRegions.push(currentTable)
+            }
         }
 
         return tableRegions
+    }
+
+    /**
+     * Calculate table width from column positions
+     */
+    private calculateTableWidth(columnPositions: number[]): number {
+        if (columnPositions.length < 2) return 0
+        return columnPositions[columnPositions.length - 1] - columnPositions[0]
     }
 
     /**
