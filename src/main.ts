@@ -63,6 +63,7 @@ import TableExtractor from './services/TableExtractor';
 import AgentOrchestrator from './services/AgentOrchestrator';
 import ProvenanceExporter from './services/ProvenanceExporter';
 import TextHighlighter from './services/TextHighlighter';
+import TraceLogger from './services/TraceLogger';
 
 // Utilities
 import {
@@ -847,6 +848,7 @@ function exposeWindowAPI() {
         BackendProxyService,
         SamplePDFService,
         TextHighlighter,
+        TraceLogger,
 
         toggleSemanticSearch,
         performSemanticSearch,
@@ -854,6 +856,13 @@ function exposeWindowAPI() {
         toggleAnnotationTools,
         setAnnotationTool,
         configureBackendProxy,
+
+        // Trace Logging Functions
+        downloadTraceLogs: () => TraceLogger.downloadJSON(),
+        downloadTraceLogsCSV: () => TraceLogger.downloadCSV(),
+        downloadTraceReport: () => TraceLogger.downloadHTMLReport(),
+        clearTraceLogs: () => TraceLogger.clearLogs(),
+        viewTraceLogs: () => console.table(TraceLogger.getLogs()),
 
         triggerCrashStateSave,
         triggerManualRecovery
