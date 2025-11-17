@@ -156,7 +156,7 @@ class TableExtractor {
             const columnPositions = this.detectColumnPositions(row)
 
             // Check if row is part of a table
-            const hasMultipleColumns = columnPositions.length >= 3
+            const hasMultipleColumns = columnPositions.length >= 4
             const alignsWithTable = currentTable &&
                 this.alignsWithColumns(columnPositions, currentTable.columnPositions)
 
@@ -165,7 +165,7 @@ class TableExtractor {
                 currentTable.rows.push(row)
             } else if (hasMultipleColumns) {
                 // Start new table
-                if (currentTable && currentTable.rows.length >= 2) {
+                if (currentTable && currentTable.rows.length >= 3) {
                     tableRegions.push(currentTable)
                 }
                 currentTable = {
@@ -175,7 +175,7 @@ class TableExtractor {
                 }
             } else {
                 // Not a table row - end current table if exists
-                if (currentTable && currentTable.rows.length >= 2) {
+                if (currentTable && currentTable.rows.length >= 3) {
                     tableRegions.push(currentTable)
                 }
                 currentTable = null
@@ -183,7 +183,7 @@ class TableExtractor {
         })
 
         // Don't forget the last table
-        if (currentTable && currentTable.rows.length >= 2) {
+        if (currentTable && currentTable.rows.length >= 3) {
             tableRegions.push(currentTable)
         }
 
@@ -203,7 +203,7 @@ class TableExtractor {
             tableColumns.some(col => Math.abs(pos - col) < tolerance)
         )
 
-        return aligned.length >= positions.length * 0.7
+        return aligned.length >= positions.length * 0.8
     }
 
     /**

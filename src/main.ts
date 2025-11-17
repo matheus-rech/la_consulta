@@ -61,6 +61,8 @@ import {
 import FigureExtractor from './services/FigureExtractor';
 import TableExtractor from './services/TableExtractor';
 import AgentOrchestrator from './services/AgentOrchestrator';
+import ProvenanceExporter from './services/ProvenanceExporter';
+import TextHighlighter from './services/TextHighlighter';
 
 // Utilities
 import {
@@ -821,6 +823,9 @@ function exposeWindowAPI() {
         exportExcel,
         exportAudit,
         exportAnnotatedPDF,
+        
+        exportWithFullProvenance: ProvenanceExporter.exportWithFullProvenance,
+        downloadProvenanceJSON: ProvenanceExporter.downloadProvenanceJSON,
 
         // Search Functions (2)
         toggleSearchInterface,
@@ -839,6 +844,7 @@ function exposeWindowAPI() {
         AnnotationService,
         BackendProxyService,
         SamplePDFService,
+        TextHighlighter,
 
         toggleSemanticSearch,
         performSemanticSearch,
