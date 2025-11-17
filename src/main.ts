@@ -43,6 +43,7 @@ import {
     handleImageAnalysis,
     handleDeepAnalysis
 } from './services/AIService';
+import AuthManager from './services/AuthManager';
 import SearchService from './services/SearchService';
 import SemanticSearchService from './services/SemanticSearchService';
 import AnnotationService from './services/AnnotationService';
@@ -889,6 +890,10 @@ async function initializeApp() {
 
         FormManager.initialize();
         console.log('✓ Form Manager initialized');
+
+        // Initialize backend authentication
+        await AuthManager.initialize();
+        console.log('✓ Backend authentication initialized');
 
         // 3. Configure PDF.js
         configurePDFJS();

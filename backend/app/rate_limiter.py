@@ -1,9 +1,10 @@
 """
 Rate limiting utilities using token bucket algorithm
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict
 from fastapi import HTTPException, status
+import threading
 
 
 class TokenBucket:
@@ -12,11 +13,12 @@ class TokenBucket:
     def __init__(self, tokens_per_minute: int):
         self.tokens_per_minute = tokens_per_minute
         self.tokens = tokens_per_minute
-        self.last_refill = datetime.utcnow()
+        self.last_refill = datetime.now(timezone.utc)
+        self._lock = threading.Lock()
     
     def refill(self):
         """Refill tokens based on time elapsed"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         elapsed = (now - self.last_refill).total_seconds()
         tokens_to_add = (elapsed / 60.0) * self.tokens_per_minute
         self.tokens = min(self.tokens_per_minute, self.tokens + tokens_to_add)
@@ -24,11 +26,12 @@ class TokenBucket:
     
     def consume(self, tokens: int = 1) -> bool:
         """Try to consume tokens. Returns True if successful, False if rate limit exceeded"""
-        self.refill()
-        if self.tokens >= tokens:
-            self.tokens -= tokens
-            return True
-        return False
+        with self._lock:
+            self.refill()
+            if self.tokens >= tokens:
+                self.tokens -= tokens
+                return True
+            return False
 
 
 class RateLimiter:
