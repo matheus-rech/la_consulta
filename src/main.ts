@@ -906,6 +906,10 @@ async function initializeApp() {
         FormManager.initialize();
         console.log('✓ Form Manager initialized');
 
+        // Configure TextHighlighter with PDF container
+        TextHighlighter.configure({ container: '.pdf-page' });
+        console.log('✓ Text Highlighter configured');
+
         // Initialize backend authentication
         await AuthManager.initialize();
         console.log('✓ Backend authentication initialized');

@@ -24,9 +24,56 @@ export interface HighlightOptions {
     scrollIntoView?: boolean;
 }
 
+export interface TextHighlighterConfig {
+    /** CSS selector for the PDF container element, or the element itself */
+    container?: string | HTMLElement;
+}
+
 export const TextHighlighter = {
     /** Active highlight overlays */
     activeHighlights: [] as HTMLElement[],
+    
+    /** Configured container selector or element */
+    containerConfig: '.pdf-page' as string | HTMLElement,
+    
+    /**
+     * Configure the TextHighlighter service
+     * 
+     * This should be called during application initialization to specify
+     * the PDF container element, making the service decoupled from specific
+     * DOM structure assumptions.
+     * 
+     * @param config - Configuration options
+     * @param config.container - CSS selector string or HTMLElement for the PDF container
+     * 
+     * @example
+     * ```typescript
+     * // Configure with a selector
+     * TextHighlighter.configure({ container: '.pdf-page' });
+     * 
+     * // Configure with an element reference
+     * const pdfElement = document.getElementById('pdf-pages');
+     * TextHighlighter.configure({ container: pdfElement });
+     * ```
+     */
+    configure: (config: TextHighlighterConfig): void => {
+        if (config.container) {
+            TextHighlighter.containerConfig = config.container;
+        }
+    },
+    
+    /**
+     * Get the configured PDF container element
+     * 
+     * @returns The PDF container element, or null if not found
+     * @private
+     */
+    _getContainer: (): HTMLElement | null => {
+        if (typeof TextHighlighter.containerConfig === 'string') {
+            return document.querySelector(TextHighlighter.containerConfig);
+        }
+        return TextHighlighter.containerConfig;
+    },
     
     /**
      * Highlight text chunks on the current page
@@ -54,7 +101,7 @@ export const TextHighlighter = {
             return;
         }
         
-        const pdfContainer = document.querySelector('.pdf-page');
+        const pdfContainer = TextHighlighter._getContainer();
         if (!pdfContainer) {
             console.warn('PDF container not found');
             return;
@@ -181,7 +228,7 @@ export const TextHighlighter = {
             flash = false,
         } = options;
         
-        const pdfContainer = document.querySelector('.pdf-page');
+        const pdfContainer = TextHighlighter._getContainer();
         if (!pdfContainer) {
             console.warn('PDF container not found');
             return;
