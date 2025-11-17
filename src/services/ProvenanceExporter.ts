@@ -104,6 +104,9 @@ export const ProvenanceExporter = {
         const state = AppStateManager.getState();
         const extractions = ExtractionTracker.getExtractions();
         
+        // Generate timestamp once for consistency across all fields
+        const exportTimestamp = new Date().toISOString();
+        
         const textChunks = state.textChunks || [];
         
         const tables = state.extractedTables || [];
@@ -113,7 +116,7 @@ export const ProvenanceExporter = {
             document: {
                 filename: state.documentName || 'unknown',
                 totalPages: state.totalPages || 0,
-                extractionDate: new Date().toISOString(),
+                extractionDate: exportTimestamp,
             },
             textChunks: textChunks.map((chunk: TextChunk) => ({
                 index: chunk.index,
@@ -167,7 +170,7 @@ export const ProvenanceExporter = {
                     x: state.scale || 1.0,
                     y: state.scale || 1.0,
                 },
-                extractionDate: new Date().toISOString(),
+                extractionDate: exportTimestamp,
             },
         };
         
