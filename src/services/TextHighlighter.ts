@@ -147,13 +147,23 @@ export const TextHighlighter = {
     /**
      * Clear all active highlights
      */
+    /**
+     * Clear all active highlights.
+     * 
+     * Note: If the PDF container is cleared or replaced externally,
+     * you should call clearHighlights() to avoid memory leaks from
+     * lingering references to detached DOM nodes.
+     */
     clearHighlights: (): void => {
-        TextHighlighter.activeHighlights.forEach(highlight => {
+        // Only attempt to remove highlights still attached to the DOM
+        TextHighlighter.activeHighlights = TextHighlighter.activeHighlights.filter(highlight => {
             if (highlight.parentNode) {
                 highlight.parentNode.removeChild(highlight);
+                return false; // removed from DOM, don't keep reference
             }
+            // If already detached, just drop reference
+            return false;
         });
-        TextHighlighter.activeHighlights = [];
     },
     
     /**
