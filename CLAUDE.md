@@ -72,7 +72,7 @@ src/
 ├── config/
 │   └── index.ts                     # App configuration (105 lines)
 ├── state/
-│   └── AppStateManager.ts           # Global state with Observer pattern (138 lines)
+│   └── AppStateManager.ts           # Global state with Observer pattern (278 lines)
 ├── data/
 │   └── ExtractionTracker.ts         # Extraction tracking & persistence (193 lines)
 ├── forms/
