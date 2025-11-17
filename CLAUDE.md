@@ -74,7 +74,7 @@ src/
 ├── state/
 │   └── AppStateManager.ts           # Global state with Observer pattern (278 lines)
 ├── data/
-│   └── ExtractionTracker.ts         # Extraction tracking & persistence (193 lines)
+│   └── ExtractionTracker.ts         # Extraction tracking & persistence (331 lines)
 ├── forms/
 │   ├── FormManager.ts               # Multi-step form logic (265 lines)
 │   └── DynamicFields.ts             # Dynamic field generation (253 lines)
