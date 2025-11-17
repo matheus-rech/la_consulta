@@ -86,7 +86,7 @@ class TableExtractor {
      * Step 2: Group text items into rows based on Y-coordinate
      * Items with similar Y values (within tolerance) belong to the same row
      */
-    private groupItemsByRow(items: TextItem[], tolerance = 5): TextItem[][] {
+    private groupItemsByRow(items: TextItem[], tolerance = 3): TextItem[][] {
         // Sort by Y coordinate
         const sorted = [...items].sort((a, b) => a.y - b.y)
 
@@ -120,7 +120,7 @@ class TableExtractor {
      * Step 3: Detect column positions by clustering X coordinates
      * Items that align vertically (similar X positions) form columns
      */
-    private detectColumnPositions(row: TextItem[], tolerance = 10): number[] {
+    private detectColumnPositions(row: TextItem[], tolerance = 8): number[] {
         const positions = row.map(item => item.x)
 
         // Cluster nearby X positions
@@ -156,7 +156,7 @@ class TableExtractor {
             const columnPositions = this.detectColumnPositions(row)
 
             // Check if row is part of a table
-            const hasMultipleColumns = columnPositions.length >= 4
+            const hasMultipleColumns = columnPositions.length >= 5
             const alignsWithTable = currentTable &&
                 this.alignsWithColumns(columnPositions, currentTable.columnPositions)
 
@@ -165,7 +165,7 @@ class TableExtractor {
                 currentTable.rows.push(row)
             } else if (hasMultipleColumns) {
                 // Start new table
-                if (currentTable && currentTable.rows.length >= 3) {
+                if (currentTable && currentTable.rows.length >= 5 && this.isValidTable(currentTable)) {
                     tableRegions.push(currentTable)
                 }
                 currentTable = {
@@ -175,7 +175,7 @@ class TableExtractor {
                 }
             } else {
                 // Not a table row - end current table if exists
-                if (currentTable && currentTable.rows.length >= 3) {
+                if (currentTable && currentTable.rows.length >= 5 && this.isValidTable(currentTable)) {
                     tableRegions.push(currentTable)
                 }
                 currentTable = null
@@ -183,11 +183,47 @@ class TableExtractor {
         })
 
         // Don't forget the last table
-        if (currentTable && currentTable.rows.length >= 3) {
+        if (currentTable && currentTable.rows.length >= 5 && this.isValidTable(currentTable)) {
             tableRegions.push(currentTable)
         }
 
         return tableRegions
+    }
+
+    /**
+     * Validate if a table region contains actual table data
+     * Checks for numeric content and valid headers
+     */
+    private isValidTable(tableRegion: any): boolean {
+        const rows = tableRegion.rows
+
+        // Check 1: Must have at least 30% numeric content
+        const totalCells = rows.reduce((sum: number, row: TextItem[]) => sum + row.length, 0)
+        const numericCells = rows.reduce((sum: number, row: TextItem[]) => {
+            return sum + row.filter((item: TextItem) => {
+                const text = item.text.trim()
+                // Check if contains numbers (including decimals, percentages, etc.)
+                return /\d/.test(text)
+            }).length
+        }, 0)
+
+        const numericRatio = numericCells / totalCells
+        if (numericRatio < 0.3) {
+            return false
+        }
+
+        // Check 2: First row (headers) should not have single-character entries only
+        const firstRow = rows[0]
+        const singleCharCount = firstRow.filter((item: TextItem) => 
+            item.text.trim().length === 1
+        ).length
+
+        // Reject if more than 50% of headers are single characters
+        if (singleCharCount > firstRow.length * 0.5) {
+            return false
+        }
+
+        return true
     }
 
     /**
