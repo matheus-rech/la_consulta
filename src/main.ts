@@ -338,6 +338,7 @@ function setupEventListeners() {
     const exportCsvBtn = document.getElementById('export-csv-btn');
     const exportAuditBtn = document.getElementById('export-audit-btn');
     const exportPdfBtn = document.getElementById('export-pdf-btn');
+    const exportProvenanceBtn = document.getElementById('export-provenance-btn');
 
     if (exportExcelBtn) {
         exportExcelBtn.addEventListener('click', () => {
@@ -375,6 +376,14 @@ function setupEventListeners() {
         exportPdfBtn.addEventListener('click', () => {
             if (window.ClinicalExtractor?.exportAnnotatedPDF) {
                 window.ClinicalExtractor.exportAnnotatedPDF();
+            }
+        });
+    }
+
+    if (exportProvenanceBtn) {
+        exportProvenanceBtn.addEventListener('click', () => {
+            if (window.ClinicalExtractor?.downloadProvenanceJSON) {
+                window.ClinicalExtractor.downloadProvenanceJSON();
             }
         });
     }
@@ -697,11 +706,14 @@ async function performSemanticSearch() {
             resultsDiv.innerHTML = '<p style="color: #666; font-style: italic;">No results found</p>';
         } else {
             resultsDiv.innerHTML = results.map((result, idx) => `
-                <div style="padding: 8px; margin: 4px 0; background: white; border-left: 3px solid #0288d1; border-radius: 4px; cursor: pointer;" onclick="window.ClinicalExtractor.jumpToPage(${result.pageNum})">
+                <div style="padding: 8px; margin: 4px 0; background: white; border-left: 3px solid #0288d1; border-radius: 4px; cursor: pointer;" onclick="window.ClinicalExtractor.highlightSemanticResult(${idx})">
                     <div style="font-size: 12px; color: #666;">Result ${idx + 1} • Page ${result.pageNum} • Score: ${result.score.toFixed(2)}</div>
                     <div style="margin-top: 4px;">${result.text.substring(0, 150)}${result.text.length > 150 ? '...' : ''}</div>
                 </div>
             `).join('');
+            
+            // Store results for highlighting
+            AppStateManager.setState({ semanticSearchResults: results });
         }
         
         StatusManager.show(`Found ${results.length} results`, 'success');
@@ -723,7 +735,34 @@ async function jumpToPage(pageNum: number) {
         return;
     }
     
-    await PDFRenderer.renderPage(state.pdfDoc, pageNum);
+    await PDFRenderer.renderPage(pageNum, TextSelection);
+}
+
+/**
+ * Highlight a semantic search result
+ */
+function highlightSemanticResult(resultIndex: number) {
+    const state = AppStateManager.getState();
+    const results = state.semanticSearchResults || [];
+    
+    if (resultIndex < 0 || resultIndex >= results.length) {
+        return;
+    }
+    
+    const result = results[resultIndex];
+    
+    // Jump to page first
+    jumpToPage(result.pageNum).then(() => {
+        // Highlight the result if it has bounding box
+        if (result.bbox) {
+            TextHighlighter.highlightBoundingBox(result.bbox, {
+                color: 'rgba(0, 188, 212, 0.3)',
+                borderColor: 'rgba(0, 188, 212, 0.8)',
+                borderWidth: 3,
+                flash: true
+            });
+        }
+    });
 }
 
 /**
@@ -854,6 +893,7 @@ function exposeWindowAPI() {
         toggleAnnotationTools,
         setAnnotationTool,
         configureBackendProxy,
+        highlightSemanticResult,
 
         triggerCrashStateSave,
         triggerManualRecovery
