@@ -203,10 +203,18 @@ export const ProvenanceExporter = {
 };
 
 /**
+ * Table structure for CSV generation
+ */
+interface TableData {
+    headers?: string[];
+    rows?: string[][];
+}
+
+/**
  * Helper function to generate CSV from table data
  */
-function generateCSV(table: any): string {
-    const escapeCSV = (cell: any) => {
+function generateCSV(table: TableData): string {
+    const escapeCSV = (cell: string | null | undefined): string => {
         if (cell == null) return '';
         const str = String(cell);
         if (str.includes(',') || str.includes('"') || str.includes('\n')) {
