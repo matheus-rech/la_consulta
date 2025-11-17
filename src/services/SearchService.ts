@@ -163,7 +163,13 @@ export const SearchService = {
         // Use TextHighlighter for visual highlighting
         resultsOnPage.forEach(result => {
             if (result.coordinates) {
-                TextHighlighter.highlightBoundingBox(result.coordinates, {
+                // Convert left/top to x/y for TextHighlighter
+                TextHighlighter.highlightBoundingBox({
+                    x: result.coordinates.left,
+                    y: result.coordinates.top,
+                    width: result.coordinates.width,
+                    height: result.coordinates.height,
+                }, {
                     color: 'rgba(255, 255, 0, 0.4)',
                     borderColor: 'rgba(255, 200, 0, 0.8)',
                     borderWidth: 2,

@@ -748,7 +748,9 @@ async function jumpToPage(pageNum: number) {
         return;
     }
     
-    await PDFRenderer.renderPage(state.pdfDoc, pageNum);
+    // Import TextSelection dynamically to avoid circular dependency
+    const { default: TextSelection } = await import('./pdf/TextSelection');
+    await PDFRenderer.renderPage(pageNum, TextSelection);
     
     // Highlight search results on this page if available
     const results = SearchService.currentResults.filter(r => r.page === pageNum);

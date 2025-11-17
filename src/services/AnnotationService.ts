@@ -162,15 +162,29 @@ export const AnnotationService = {
         pageNum: number,
         x: number,
         y: number,
-        comment: string
+        comment?: string
     ): Annotation => {
         return AnnotationService.addAnnotation({
             type: 'note',
             pageNum,
             color: AnnotationService.currentColor,
             coordinates: { x, y, width: 30, height: 30 },
-            comment,
+            comment: comment || '',
         });
+    },
+
+    /**
+     * Get fill color for current annotation color
+     */
+    getFillColor: (): string => {
+        return COLOR_MAP[AnnotationService.currentColor] || COLOR_MAP.yellow;
+    },
+
+    /**
+     * Get stroke color for current annotation color
+     */
+    getStrokeColor: (): string => {
+        return STROKE_COLOR_MAP[AnnotationService.currentColor] || STROKE_COLOR_MAP.yellow;
     },
 
     /**
@@ -192,6 +206,48 @@ export const AnnotationService = {
             coordinates: { x, y, x2, y2 },
             comment,
         });
+    },
+
+    /**
+     * Create rectangle annotation (convenience method)
+     */
+    createRectangle: (
+        pageNum: number,
+        x: number,
+        y: number,
+        x2: number,
+        y2: number,
+        comment?: string
+    ): Annotation => {
+        return AnnotationService.createShape('rectangle', pageNum, x, y, x2, y2, comment);
+    },
+
+    /**
+     * Create circle annotation (convenience method)
+     */
+    createCircle: (
+        pageNum: number,
+        x: number,
+        y: number,
+        x2: number,
+        y2: number,
+        comment?: string
+    ): Annotation => {
+        return AnnotationService.createShape('circle', pageNum, x, y, x2, y2, comment);
+    },
+
+    /**
+     * Create arrow annotation (convenience method)
+     */
+    createArrow: (
+        pageNum: number,
+        x: number,
+        y: number,
+        x2: number,
+        y2: number,
+        comment?: string
+    ): Annotation => {
+        return AnnotationService.createShape('arrow', pageNum, x, y, x2, y2, comment);
     },
 
     /**
