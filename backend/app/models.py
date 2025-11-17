@@ -1,20 +1,141 @@
 """
-In-memory database models for the application
+SQLAlchemy database models and Pydantic schemas for the application
 """
 from datetime import datetime
 from typing import Dict, List, Optional, Any
+from sqlalchemy import Column, String, Integer, DateTime, Text, ForeignKey, JSON, Float
+from sqlalchemy.orm import relationship
 from pydantic import BaseModel, EmailStr, validator
-import uuid
+from .database import Base
 
+
+# ============================================================================
+# SQLAlchemy ORM Models (Database Tables)
+# ============================================================================
+
+
+class UserModel(Base):
+    """User table"""
+    __tablename__ = "users"
+    
+    id = Column(String, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    password_hash = Column(String, nullable=False)
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=False)
+    
+    # Relationships
+    documents = relationship("DocumentModel", back_populates="user", cascade="all, delete-orphan")
+    extractions = relationship("ExtractionModel", back_populates="user", cascade="all, delete-orphan")
+    annotations = relationship("AnnotationModel", back_populates="user", cascade="all, delete-orphan")
+    api_requests = relationship("APIRequestModel", back_populates="user", cascade="all, delete-orphan")
+
+
+class DocumentModel(Base):
+    """Document table"""
+    __tablename__ = "documents"
+    
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    filename = Column(String, nullable=False)
+    total_pages = Column(Integer, nullable=False)
+    upload_date = Column(DateTime, nullable=False)
+    pdf_data = Column(Text, nullable=False)  # Base64 encoded PDF data
+    metadata = Column(JSON, default={})
+    
+    # Relationships
+    user = relationship("UserModel", back_populates="documents")
+    extractions = relationship("ExtractionModel", back_populates="document", cascade="all, delete-orphan")
+    annotations = relationship("AnnotationModel", back_populates="document", cascade="all, delete-orphan")
+    text_chunks = relationship("TextChunkModel", back_populates="document", cascade="all, delete-orphan")
+
+
+class ExtractionModel(Base):
+    """Extraction table"""
+    __tablename__ = "extractions"
+    
+    id = Column(String, primary_key=True, index=True)
+    document_id = Column(String, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    field_name = Column(String, nullable=False, index=True)
+    text = Column(Text, nullable=False)
+    page = Column(Integer, nullable=False)
+    coordinates = Column(JSON, nullable=False)  # {x, y, width, height}
+    method = Column(String, nullable=False)  # 'manual', 'gemini-pico', 'gemini-summary', etc.
+    timestamp = Column(DateTime, nullable=False)
+    
+    # Relationships
+    user = relationship("UserModel", back_populates="extractions")
+    document = relationship("DocumentModel", back_populates="extractions")
+
+
+class TextChunkModel(Base):
+    """Text chunk table for storing processed PDF text"""
+    __tablename__ = "text_chunks"
+    
+    id = Column(String, primary_key=True, index=True)
+    document_id = Column(String, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    page_number = Column(Integer, nullable=False)
+    chunk_index = Column(Integer, nullable=False)
+    text = Column(Text, nullable=False)
+    created_at = Column(DateTime, nullable=False)
+    
+    # Relationships
+    document = relationship("DocumentModel", back_populates="text_chunks")
+
+
+class AnnotationModel(Base):
+    """Annotation table"""
+    __tablename__ = "annotations"
+    
+    id = Column(String, primary_key=True, index=True)
+    document_id = Column(String, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    page_num = Column(Integer, nullable=False)
+    type = Column(String, nullable=False)  # 'highlight', 'note', 'rectangle', 'circle', 'arrow', 'freehand'
+    coordinates = Column(JSON, nullable=False)
+    content = Column(Text, nullable=False)
+    color = Column(String, nullable=False)
+    created_at = Column(DateTime, nullable=False)
+    
+    # Relationships
+    user = relationship("UserModel", back_populates="annotations")
+    document = relationship("DocumentModel", back_populates="annotations")
+
+
+class APIRequestModel(Base):
+    """API request tracking table for monitoring and rate limiting"""
+    __tablename__ = "api_requests"
+    
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    endpoint = Column(String, nullable=False, index=True)
+    method = Column(String, nullable=False)  # GET, POST, PUT, DELETE
+    status_code = Column(Integer, nullable=False)
+    request_data = Column(JSON, default={})
+    response_data = Column(JSON, default={})
+    error_message = Column(Text, nullable=True)
+    duration_ms = Column(Float, nullable=False)
+    timestamp = Column(DateTime, nullable=False, index=True)
+    
+    # Relationships
+    user = relationship("UserModel", back_populates="api_requests")
+
+
+# ============================================================================
+# Pydantic Schemas (Request/Response Models)
+# ============================================================================
 
 
 class User(BaseModel):
-    """User model"""
+    """User schema"""
     id: str
     email: EmailStr
-    password_hash: str
     created_at: datetime
     updated_at: datetime
+    
+    class Config:
+        from_attributes = True
 
 
 class UserCreate(BaseModel):
@@ -39,6 +160,9 @@ class UserResponse(BaseModel):
     id: str
     email: EmailStr
     created_at: datetime
+    
+    class Config:
+        from_attributes = True
 
 
 class Token(BaseModel):
@@ -52,16 +176,18 @@ class TokenData(BaseModel):
     email: Optional[str] = None
 
 
-
 class Document(BaseModel):
-    """Document model"""
+    """Document schema"""
     id: str
     user_id: str
     filename: str
     total_pages: int
     upload_date: datetime
-    pdf_data: str  # Base64 encoded PDF data
+    pdf_data: str
     metadata: Dict[str, Any] = {}
+    
+    class Config:
+        from_attributes = True
 
 
 class DocumentCreate(BaseModel):
@@ -80,6 +206,9 @@ class DocumentResponse(BaseModel):
     total_pages: int
     upload_date: datetime
     metadata: Dict[str, Any]
+    
+    class Config:
+        from_attributes = True
 
 
 class DocumentDetail(BaseModel):
@@ -91,7 +220,9 @@ class DocumentDetail(BaseModel):
     upload_date: datetime
     pdf_data: str
     metadata: Dict[str, Any]
-
+    
+    class Config:
+        from_attributes = True
 
 
 class Coordinates(BaseModel):
@@ -103,7 +234,7 @@ class Coordinates(BaseModel):
 
 
 class Extraction(BaseModel):
-    """Extraction model"""
+    """Extraction schema"""
     id: str
     document_id: str
     user_id: str
@@ -111,8 +242,11 @@ class Extraction(BaseModel):
     text: str
     page: int
     coordinates: Coordinates
-    method: str  # 'manual', 'gemini-pico', 'gemini-summary', etc.
+    method: str
     timestamp: datetime
+    
+    class Config:
+        from_attributes = True
 
 
 class ExtractionCreate(BaseModel):
@@ -123,6 +257,12 @@ class ExtractionCreate(BaseModel):
     page: int
     coordinates: Coordinates
     method: str
+
+
+class ExtractionBatchCreate(BaseModel):
+    """Batch extraction creation request"""
+    document_id: str
+    extractions: List[ExtractionCreate]
 
 
 class ExtractionResponse(BaseModel):
@@ -136,20 +276,46 @@ class ExtractionResponse(BaseModel):
     coordinates: Coordinates
     method: str
     timestamp: datetime
+    
+    class Config:
+        from_attributes = True
 
+
+class TextChunk(BaseModel):
+    """Text chunk schema"""
+    id: str
+    document_id: str
+    page_number: int
+    chunk_index: int
+    text: str
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class TextChunkCreate(BaseModel):
+    """Text chunk creation request"""
+    document_id: str
+    page_number: int
+    chunk_index: int
+    text: str
 
 
 class Annotation(BaseModel):
-    """Annotation model"""
+    """Annotation schema"""
     id: str
     document_id: str
     user_id: str
     page_num: int
-    type: str  # 'highlight', 'note', 'rectangle', 'circle', 'arrow', 'freehand'
+    type: str
     coordinates: Dict[str, Any]
     content: str
     color: str
     created_at: datetime
+    
+    class Config:
+        from_attributes = True
 
 
 class AnnotationCreate(BaseModel):
@@ -180,7 +346,26 @@ class AnnotationResponse(BaseModel):
     content: str
     color: str
     created_at: datetime
+    
+    class Config:
+        from_attributes = True
 
+
+class APIRequest(BaseModel):
+    """API request schema"""
+    id: str
+    user_id: str
+    endpoint: str
+    method: str
+    status_code: int
+    request_data: Dict[str, Any] = {}
+    response_data: Dict[str, Any] = {}
+    error_message: Optional[str] = None
+    duration_ms: float
+    timestamp: datetime
+    
+    class Config:
+        from_attributes = True
 
 
 class PICORequest(BaseModel):
@@ -279,28 +464,3 @@ class DeepAnalysisRequest(BaseModel):
 class DeepAnalysisResponse(BaseModel):
     """Deep analysis response"""
     analysis: str
-
-
-
-class InMemoryDatabase:
-    """Simple in-memory database for proof of concept"""
-    
-    def __init__(self):
-        self.users: Dict[str, User] = {}
-        self.documents: Dict[str, Document] = {}
-        self.extractions: Dict[str, Extraction] = {}
-        self.annotations: Dict[str, Annotation] = {}
-        
-        self.users_by_email: Dict[str, str] = {}  # email -> user_id
-        self.documents_by_user: Dict[str, List[str]] = {}  # user_id -> [document_ids]
-        self.extractions_by_document: Dict[str, List[str]] = {}  # document_id -> [extraction_ids]
-        self.extractions_by_user: Dict[str, List[str]] = {}  # user_id -> [extraction_ids]
-        self.annotations_by_document: Dict[str, List[str]] = {}  # document_id -> [annotation_ids]
-        self.annotations_by_user: Dict[str, List[str]] = {}  # user_id -> [annotation_ids]
-    
-    def generate_id(self) -> str:
-        """Generate a unique ID"""
-        return str(uuid.uuid4())
-
-
-db = InMemoryDatabase()

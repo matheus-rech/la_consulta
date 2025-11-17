@@ -12,11 +12,14 @@ class Settings(BaseSettings):
     
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # 30 minutes for better security
+    JWT_ACCESS_TOKEN_EXPIRE_DAYS: int = 30  # 30 days token expiration
     
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
     
-    RATE_LIMIT_PER_MINUTE: int = 100
+    # Database settings
+    DATABASE_URL: str = "sqlite:///./la_consulta.db"  # Default to SQLite, can be overridden with PostgreSQL
+    
+    RATE_LIMIT_PER_MINUTE: int = 60  # 60 requests per minute as specified
     AI_RATE_LIMIT_PER_MINUTE: int = 10
     
     APP_NAME: str = "La Consulta Backend"
