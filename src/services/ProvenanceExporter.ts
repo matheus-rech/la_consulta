@@ -200,12 +200,12 @@ export const ProvenanceExporter = {
  */
 function generateCSV(table: any): string {
     const escapeCSV = (cell: any) => {
-        if (cell == null) return '""';
+        if (cell == null) return '';
         const str = String(cell);
         if (str.includes(',') || str.includes('"') || str.includes('\n')) {
             return `"${str.replace(/"/g, '""')}"`;
         }
-        return `"${str}"`;
+        return str;
     };
     
     let csv = '';
