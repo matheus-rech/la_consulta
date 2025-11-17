@@ -1622,59 +1622,49 @@ See `REFACTORING_COMPLETE.md` for complete transformation details.
 
 ## Resources & Documentation
 
-**Project Documentation:**
+**📚 Documentation Index:**
+- **Documentation Index:** `docs/README.md` - Complete guide to all documentation and navigation
 
 **Core Architecture:**
-- **CLAUDE.md:** This file - Complete project guide for AI assistants
-- **README.md:** Project overview and quick start
-- **AI Service Architecture:** `AI_SERVICE_ARCHITECTURE.md`
-- **Refactoring Summary:** `REFACTORING_COMPLETE.md`
+- **CLAUDE.md:** This file - Complete project guide for AI assistants (2,000+ lines)
+- **README.md:** Project overview, quick start, features, and getting started
+- **AI Service Architecture:** `AI_SERVICE_ARCHITECTURE.md` - Gemini API integration details
+- **Multi-Agent Pipeline Guide:** `MULTI_AGENT_PIPELINE_COMPLETE.md` - Complete multi-agent system
 
-**Multi-Agent System:**
-- **Multi-Agent Pipeline Guide:** `MULTI_AGENT_PIPELINE_COMPLETE.md`
-- **Agent Prompts Reference:** `AGENT_PROMPTS_REFERENCE.md`
-- **PDF Extraction Techniques:** `pdf-data-extraction-guide.md`
+**Reference Documentation (docs/):**
+- **Backend Integration:** `docs/BACKEND_INTEGRATION.md` - Secure API setup and authentication
+- **Agent Prompts Reference:** `docs/AGENT_PROMPTS_REFERENCE.md` - Medical research agent prompts
+- **Manual Testing Guide:** `docs/MANUAL_TESTING_GUIDE.md` - Complete testing procedures
+- **Feature Verification:** `docs/Feature_Verification.md` - Feature checklist and status
+- **Improvement Strategy:** `docs/Clinical_Extractor_Improvement_Strategy.md` - Production roadmap
 
-**Integration & Implementation:**
-- **Frontend-Backend Integration:** `FRONTEND_BACKEND_INTEGRATION.md` ⭐ NEW
-- **Integration Checklist:** `INTEGRATION_CHECKLIST.md`
-- **Integration Summary:** `INTEGRATION_SUMMARY.md` ⭐ NEW
-- **Implementation Summary:** `IMPLEMENTATION_SUMMARY.md` ⭐ NEW
-- **Integration Verification:** `INTEGRATION_VERIFICATION.md` ⭐ NEW
-
-**Phase Documentation:**
-- **Phase 4.2-4.3 Summary:** `PHASE_4.2_4.3_SUMMARY.md`
-- **Phase 5.4 Complete:** `PHASE_5_4_COMPLETE.md`
-- **Phase 5.5 Complete:** `PHASE_5_5_COMPLETE.md`
-- **Phase 5 Integration Notes:** `PHASE_5_INTEGRATION_NOTES.md`
-- **Phase 6 Complete:** `PHASE_6_COMPLETE.md`
-
-**Analysis & Strategy:**
-- **Executive Summary:** `analysis/EXECUTIVE-SUMMARY.md` ⭐ NEW
-- **Architecture Map:** `analysis/architecture-map.md` ⭐ NEW
-- **Top 10 Issues:** `analysis/top-10-issues.md` ⭐ NEW
-- **Quick Wins:** `analysis/quick-wins.md`, `analysis/quick-wins-complete.md` ⭐ NEW
-- **Error Handling Implementation:** `analysis/error-handling-implementation.md` ⭐ NEW
-- **Strategic Recommendations:** `analysis/strategic-recommendations.md` ⭐ NEW
-- **TypeScript Fixes:** `analysis/typescript-fixes.md` ⭐ NEW
-- **Google Sheets Decision:** `analysis/google-sheets-decision.md`
-
-**Testing & Quality:**
-- **Manual Testing Guide:** `docs/MANUAL_TESTING_GUIDE.md` ⭐ NEW
-- **Feature Verification:** `docs/Feature_Verification.md` ⭐ NEW
-- **Improvement Strategy:** `docs/Clinical_Extractor_Improvement_Strategy.md` ⭐ NEW
-- **Verification Checklist:** `VERIFICATION_CHECKLIST.md`
-- **Regression Fixes:** `REGRESSION_FIXES.md`
+**Analysis & Strategy (analysis/):**
+- **Executive Summary:** `analysis/EXECUTIVE-SUMMARY.md` - Current state assessment
+- **Architecture Map:** `analysis/architecture-map.md` - Complete system architecture
+- **Top 10 Issues:** `analysis/top-10-issues.md` - Known issues and priorities
+- **Quick Wins Complete:** `analysis/quick-wins-complete.md` - Completed improvements
+- **Error Handling Implementation:** `analysis/error-handling-implementation.md` - Error patterns
+- **Strategic Recommendations:** `analysis/strategic-recommendations.md` - Future priorities
+- **TypeScript Fixes:** `analysis/typescript-fixes.md` - TypeScript improvements
 
 **Backend:**
-- **Backend README:** `backend/README.md` ⭐ NEW
-- **Bach README:** `Bach/README.md` (Special implementation notes)
+- **Backend README:** `backend/README.md` - Python FastAPI backend setup and API reference
+
+**Archived Documentation (docs/archive/):**
+Historical documentation preserved for reference but may be outdated:
+- **Phase Documentation:** `docs/archive/PHASES/` - Development phase history (PHASE_4.x through PHASE_6, REFACTORING_COMPLETE)
+- **Completed Decisions:** `docs/archive/DECISIONS/` - Implementation decisions and checklists
+- **Integration History:** `docs/archive/` - Integration documentation history (INTEGRATION_SUMMARY, INTEGRATION_CHECKLIST, etc.)
+
+> **Note:** Always refer to current documentation first. Archived docs are for historical reference only.
 
 **External Resources:**
 - **Vite Docs:** https://vitejs.dev/
 - **PDF.js Docs:** https://mozilla.github.io/pdf.js/
 - **Gemini API:** https://ai.google.dev/docs
 - **TypeScript:** https://www.typescriptlang.org/docs/
+- **FastAPI:** https://fastapi.tiangolo.com/
+- **Jest:** https://jestjs.io/docs/getting-started
 
 ---
 
