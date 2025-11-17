@@ -192,7 +192,7 @@ class TableExtractor {
 
     /**
      * Check if column positions align with existing table columns
-     * At least 70% of positions must align within tolerance
+     * At least 80% of positions must align within tolerance
      */
     private alignsWithColumns(
         positions: number[],

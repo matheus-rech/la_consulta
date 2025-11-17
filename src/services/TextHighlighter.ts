@@ -18,7 +18,6 @@ import type { TextChunk } from './CitationService';
 
 export interface HighlightOptions {
     color?: string;
-    opacity?: number;
     borderColor?: string;
     borderWidth?: number;
     flash?: boolean;
@@ -38,7 +37,6 @@ export const TextHighlighter = {
     highlightChunks: (chunkIndices: number[], options: HighlightOptions = {}): void => {
         const {
             color = 'rgba(255, 255, 0, 0.4)',
-            opacity = 0.4,
             borderColor = 'rgba(255, 193, 7, 0.8)',
             borderWidth = 2,
             flash = false,
