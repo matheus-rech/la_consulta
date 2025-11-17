@@ -43,10 +43,12 @@ import {
     handleImageAnalysis,
     handleDeepAnalysis
 } from './services/AIService';
+import AuthManager from './services/AuthManager';
 import SearchService from './services/SearchService';
 import SemanticSearchService from './services/SemanticSearchService';
 import AnnotationService from './services/AnnotationService';
 import BackendProxyService from './services/BackendProxyService';
+import SamplePDFService from './services/SamplePDFService';
 import LRUCache from './utils/LRUCache';
 import CircuitBreaker from './utils/CircuitBreaker';
 import {
@@ -181,13 +183,20 @@ function setupEventListeners() {
     const pdfFile = document.getElementById('pdf-file') as HTMLInputElement;
 
     if (pdfUploadBtn && pdfFile) {
-        pdfUploadBtn.addEventListener('click', () => pdfFile.click());
+        pdfUploadBtn.addEventListener('click', () => {
+            pdfFile.value = '';
+            pdfFile.click();
+        });
     }
 
     if (pdfFile) {
-        pdfFile.addEventListener('change', (e) => {
+        pdfFile.addEventListener('change', async (e) => {
             const file = (e.target as HTMLInputElement).files?.[0];
-            if (file) PDFLoader.loadPDF(file);
+            if (file) {
+                console.log('📄 PDF file selected:', file.name);
+                await PDFLoader.loadPDF(file);
+                (e.target as HTMLInputElement).value = '';
+            }
         });
     }
 
@@ -829,6 +838,7 @@ function exposeWindowAPI() {
         SemanticSearchService,
         AnnotationService,
         BackendProxyService,
+        SamplePDFService,
 
         toggleSemanticSearch,
         performSemanticSearch,
@@ -889,6 +899,10 @@ async function initializeApp() {
 
         FormManager.initialize();
         console.log('✓ Form Manager initialized');
+
+        // Initialize backend authentication
+        await AuthManager.initialize();
+        console.log('✓ Backend authentication initialized');
 
         // 3. Configure PDF.js
         configurePDFJS();
