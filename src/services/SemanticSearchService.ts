@@ -223,6 +223,9 @@ export const SemanticSearchService = {
 
         const results: SemanticSearchResult[] = [];
         const allTexts = textChunks.map(c => c.text);
+        
+        // Build inverted index once for all documents (more efficient)
+        const invertedIndex = buildInvertedIndex(allTexts);
 
         for (const chunk of textChunks) {
             if (!includeHeadings && chunk.isHeading) {
@@ -232,11 +235,11 @@ export const SemanticSearchService = {
             let bestScore = 0;
             let bestMatchType: 'exact' | 'fuzzy' | 'semantic' = 'exact';
             let bestMatches: Array<{ start: number; end: number }> = [];
-
+            
             for (const term of searchTerms) {
                 const exactMatches = findMatches(chunk.text, term);
                 if (exactMatches.length > 0) {
-                    const tfidfScore = calculateTFIDF(term, chunk.text, allTexts);
+                    const tfidfScore = calculateTFIDF(term, chunk.text, allTexts, invertedIndex);
                     const score = tfidfScore * 10 + exactMatches.length * 2;
                     
                     if (score > bestScore) {
