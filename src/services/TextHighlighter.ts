@@ -206,24 +206,28 @@ export const TextHighlighter = {
 };
 
 if (typeof document !== 'undefined') {
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes highlight-flash {
-            0%, 100% { 
-                box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
-                opacity: 1;
+    const styleId = 'text-highlighter-styles';
+    if (!document.getElementById(styleId)) {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = `
+            @keyframes highlight-flash {
+                0%, 100% { 
+                    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+                    opacity: 1;
+                }
+                50% { 
+                    box-shadow: 0 0 0 8px rgba(255, 193, 7, 0);
+                    opacity: 0.8;
+                }
             }
-            50% { 
-                box-shadow: 0 0 0 8px rgba(255, 193, 7, 0);
-                opacity: 0.8;
+            
+            .text-highlight-overlay {
+                transition: opacity 0.3s ease;
             }
-        }
-        
-        .text-highlight-overlay {
-            transition: opacity 0.3s ease;
-        }
-    `;
-    document.head.appendChild(style);
+        `;
+        document.head.appendChild(style);
+    }
 }
 
 export default TextHighlighter;
