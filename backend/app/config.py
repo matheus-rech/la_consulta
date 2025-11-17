@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # 30 minutes
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # 30 minutes for better security
     
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
     
@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     
     APP_NAME: str = "La Consulta Backend"
     APP_VERSION: str = "1.0.0"
-    DEBUG: bool = True
+    DEBUG: bool = False  # False by default for security
     
     class Config:
         env_file = ".env"

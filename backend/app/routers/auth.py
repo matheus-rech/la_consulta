@@ -1,7 +1,7 @@
 """
 Authentication endpoints
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, status, Depends
 from ..models import User, UserCreate, UserResponse, Token, db
 from ..auth import (
@@ -28,7 +28,7 @@ async def register(user_data: UserCreate):
         )
     
     user_id = db.generate_id()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     user = User(
         id=user_id,

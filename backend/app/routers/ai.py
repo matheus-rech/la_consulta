@@ -2,6 +2,8 @@
 AI proxy endpoints - Securely proxy Gemini API calls
 This is the critical security fix: API key is now server-side only
 """
+import json
+import base64
 from fastapi import APIRouter, HTTPException, status, Depends
 import google.generativeai as genai
 from ..models import (
@@ -27,6 +29,13 @@ genai.configure(api_key=settings.GEMINI_API_KEY)
 async def generate_pico(request: PICORequest, current_user: User = Depends(get_current_user)):
     """Generate PICO-T extraction using Gemini AI"""
     rate_limiter.check_rate_limit(f"ai:{current_user.id}", settings.AI_RATE_LIMIT_PER_MINUTE)
+    
+    # Validate input size (max 1MB of text)
+    if len(request.pdf_text) > 1_000_000:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="PDF text too large. Maximum size is 1MB."
+        )
     
     try:
         model = genai.GenerativeModel('gemini-2.0-flash-exp')
@@ -56,7 +65,6 @@ Return ONLY valid JSON, no additional text."""
             }
         )
         
-        import json
         result = json.loads(response.text)
         
         return PICOResponse(**result)
@@ -131,7 +139,6 @@ Return JSON:
             }
         )
         
-        import json
         result = json.loads(response.text)
         
         return ValidationResponse(**result)
@@ -174,7 +181,6 @@ Return null for fields not found."""
             }
         )
         
-        import json
         result = json.loads(response.text)
         
         return MetadataResponse(**result)
@@ -218,7 +224,6 @@ Return JSON array:
             }
         )
         
-        import json
         result = json.loads(response.text)
         
         return TableExtractionResponse(**result)
@@ -238,7 +243,6 @@ async def analyze_image(request: ImageAnalysisRequest, current_user: User = Depe
     try:
         model = genai.GenerativeModel('gemini-2.0-flash-exp')
         
-        import base64
         image_data = base64.b64decode(request.image_base64.split(',')[1] if ',' in request.image_base64 else request.image_base64)
         
         response = model.generate_content([

@@ -1,7 +1,7 @@
 """
 Document management endpoints
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 from fastapi import APIRouter, HTTPException, status, Depends
 from ..models import (
@@ -23,7 +23,7 @@ async def create_document(
     rate_limiter.check_rate_limit(f"documents:{current_user.id}", settings.RATE_LIMIT_PER_MINUTE)
     
     document_id = db.generate_id()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     document = Document(
         id=document_id,

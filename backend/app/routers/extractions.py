@@ -1,7 +1,7 @@
 """
 Extraction management endpoints
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from ..models import (
@@ -35,7 +35,7 @@ async def create_extraction(
         )
     
     extraction_id = db.generate_id()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     extraction = Extraction(
         id=extraction_id,

@@ -1,7 +1,7 @@
 """
 Annotation management endpoints
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from ..models import (
@@ -35,7 +35,7 @@ async def create_annotation(
         )
     
     annotation_id = db.generate_id()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     annotation = Annotation(
         id=annotation_id,
