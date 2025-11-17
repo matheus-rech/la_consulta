@@ -1,40 +1,36 @@
 """
-Application configuration management
+Configuration settings for the backend application
 """
 from pydantic_settings import BaseSettings
-from functools import lru_cache
+from typing import List
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
     
-    DATABASE_URL: str = "sqlite:///./clinical_extractor.db"
+    GEMINI_API_KEY: str
     
-    SECRET_KEY: str = "your-secret-key-here-change-in-production"
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    
-    GEMINI_API_KEY: str = ""
-    
-    RATE_LIMIT_PER_MINUTE: int = 60
-    MAX_CONCURRENT_REQUESTS: int = 5
-    
-    SUPABASE_URL: str = ""
-    SUPABASE_KEY: str = ""
-    SUPABASE_BUCKET: str = "clinical-extractor-pdfs"
+    JWT_SECRET_KEY: str
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # 30 minutes for better security
     
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
-    MAX_PDF_SIZE_MB: int = 50
     
-    DEBUG: bool = True
-    LOG_LEVEL: str = "INFO"
+    RATE_LIMIT_PER_MINUTE: int = 100
+    AI_RATE_LIMIT_PER_MINUTE: int = 10
+    
+    APP_NAME: str = "La Consulta Backend"
+    APP_VERSION: str = "1.0.0"
+    DEBUG: bool = False  # False by default for security
     
     class Config:
         env_file = ".env"
         case_sensitive = True
+    
+    @property
+    def cors_origins_list(self) -> List[str]:
+        """Parse CORS origins from comma-separated string"""
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
 
 
-@lru_cache()
-def get_settings() -> Settings:
-    """Get cached settings instance"""
-    return Settings()
+settings = Settings()
