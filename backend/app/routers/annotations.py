@@ -59,6 +59,7 @@ async def create_annotation(
         db.annotations_by_user[current_user.id] = []
     db.annotations_by_user[current_user.id].append(annotation_id)
     
+    db.persist()  # Persist after annotation creation
     return AnnotationResponse(**annotation.dict())
 
 
@@ -134,6 +135,7 @@ async def update_annotation(
         annotation.color = annotation_data.color
     
     db.annotations[annotation_id] = annotation
+    db.persist()  # Persist after annotation update
     
     return AnnotationResponse(**annotation.dict())
 
@@ -169,4 +171,5 @@ async def delete_annotation(annotation_id: str, current_user: User = Depends(get
             if ann_id != annotation_id
         ]
     
+    db.persist()  # Persist after annotation deletion
     return None

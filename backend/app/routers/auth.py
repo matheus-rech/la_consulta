@@ -40,6 +40,7 @@ async def register(user_data: UserCreate):
     
     db.users[user_id] = user
     db.users_by_email[user_data.email] = user_id
+    db.persist()  # Persist after user registration
     
     access_token = create_access_token(
         data={"sub": user.email},

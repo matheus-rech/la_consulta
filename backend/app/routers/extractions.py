@@ -59,6 +59,7 @@ async def create_extraction(
         db.extractions_by_user[current_user.id] = []
     db.extractions_by_user[current_user.id].append(extraction_id)
     
+    db.persist()  # Persist after extraction creation
     return ExtractionResponse(**extraction.dict())
 
 
@@ -136,4 +137,5 @@ async def delete_extraction(extraction_id: str, current_user: User = Depends(get
             if ext_id != extraction_id
         ]
     
+    db.persist()  # Persist after extraction deletion
     return None

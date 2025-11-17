@@ -49,6 +49,10 @@ wheels/
 backend/.env
 backend/.env.local
 
+# Backend persistence data
+backend/data/
+data/
+
 # Virtual environments
 venv/
 ENV/

@@ -40,6 +40,7 @@ async def create_document(
     if current_user.id not in db.documents_by_user:
         db.documents_by_user[current_user.id] = []
     db.documents_by_user[current_user.id].append(document_id)
+    db.persist()  # Persist after document creation
     
     return DocumentResponse(
         id=document.id,
@@ -137,4 +138,5 @@ async def delete_document(document_id: str, current_user: User = Depends(get_cur
     if document_id in db.annotations_by_document:
         del db.annotations_by_document[document_id]
     
+    db.persist()  # Persist after document deletion
     return None
