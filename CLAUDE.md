@@ -2068,3 +2068,181 @@ AnnotationService.importAnnotations(savedData)
 ```
 
 ---
+
+## Branch Management Best Practices
+
+### Current Repository State
+
+As of November 2025, the repository had accumulated **60+ branches** from AI assistant work (Claude, Copilot, Devin), with 97% being stale or merged branches. Regular cleanup is essential for maintaining a professional, navigable repository.
+
+### Branch Lifecycle
+
+**Standard Workflow:**
+```
+Create → Develop → PR → Merge → **DELETE IMMEDIATELY**
+```
+
+**Maximum branch lifetime:** Until PR is merged or closed
+
+### Branch Naming Conventions
+
+**For AI Assistants (Claude, Copilot, Devin):**
+```
+claude/[feature-name]-[sessionId]
+copilot/[feature-name]
+devin/[timestamp]-[feature-name]
+```
+
+**For manual contributors:**
+```
+feature/[issue-number]-[short-description]
+bugfix/[issue-number]-[short-description]
+hotfix/[critical-issue]
+```
+
+### Cleanup Guidelines
+
+#### Immediate Cleanup (After Each PR)
+1. **After PR merge:** Click GitHub's "Delete branch" button
+2. **After PR close:** Delete the branch if work is abandoned
+3. **Local cleanup:** Run `git fetch --prune` weekly
+
+#### Periodic Cleanup (Monthly)
+1. **Audit branches:** Visit `https://github.com/[user]/[repo]/branches`
+2. **Identify stale branches:**
+   - No commits in 30+ days
+   - No open PR associated
+   - Work has been merged or superseded
+3. **Delete stale branches** via GitHub UI or CLI
+
+#### Bulk Cleanup (Quarterly)
+If branches accumulate despite best efforts:
+
+1. **Use provided scripts:**
+   ```bash
+   # Review what will be deleted
+   cat BRANCH_CLEANUP_SUMMARY.md
+
+   # Execute cleanup (requires permissions)
+   ./cleanup-branches.sh
+   ```
+
+2. **Manual cleanup via GitHub UI:**
+   - Go to: `https://github.com/[user]/[repo]/branches`
+   - Filter by prefix (`copilot/`, `devin/`, etc.)
+   - Bulk delete via UI
+
+3. **Via GitHub CLI** (if available):
+   ```bash
+   # Delete by pattern
+   gh api repos/[user]/[repo]/branches --paginate | \
+     jq -r '.[] | select(.name | startswith("copilot/")) | .name' | \
+     while read branch; do
+       gh api "repos/[user]/[repo]/git/refs/heads/$branch" -X DELETE
+     done
+   ```
+
+### Automated Protection
+
+**GitHub Repository Settings:**
+
+1. **Enable auto-delete for merged branches:**
+   - Settings → General → Pull Requests
+   - ✅ "Automatically delete head branches"
+
+2. **Branch protection rules:**
+   - Protect `master`/`main` from force pushes
+   - Require PR reviews before merge
+   - Require status checks to pass
+
+3. **Stale branch detection:**
+   - Use GitHub Actions or third-party apps
+   - Auto-notify on branches >30 days old
+   - Auto-close PRs with no activity >60 days
+
+### Permission Issues
+
+**If branch deletion fails with HTTP 403:**
+
+This occurs when git authentication lacks delete permissions:
+
+```
+error: RPC failed; HTTP 403 curl 22 The requested URL returned error: 403
+```
+
+**Solutions:**
+
+1. **Use GitHub Web UI** (easiest) - Delete via branches page
+2. **Generate PAT with delete permissions:**
+   - Go to: `https://github.com/settings/tokens`
+   - Create token with `repo` and `delete_repo` permissions
+   - Update git remote temporarily
+3. **Use GitHub CLI:** `gh api repos/.../git/refs/heads/[branch] -X DELETE`
+
+See `BRANCH_CLEANUP_MANUAL.md` for detailed instructions.
+
+### For AI Assistants
+
+**When working on this repository:**
+
+1. **After PR merge:** Your branch will be deleted automatically (if auto-delete enabled)
+2. **Session cleanup:** Don't create retry branches like `-again`, `-please-work`, `-yet-again`
+3. **Limit retries:** Max 2-3 attempts, then create new branch with different approach
+4. **Check before creating:** Verify branch doesn't already exist
+5. **Descriptive names:** Use feature names, not generic names like `fix-1`, `update-2`
+
+### Verification After Cleanup
+
+```bash
+# Check remaining branches (should be minimal)
+git fetch --prune
+git branch -r | wc -l
+
+# View remaining branches
+git branch -r
+
+# Expected: 2-5 branches (master + active work)
+```
+
+### Recovery from Accidental Deletion
+
+**Within 90 days of deletion:**
+
+1. Find commit SHA from:
+   - PR history on GitHub
+   - Local reflog: `git reflog --all | grep [branch-name]`
+   - GitHub commit history
+
+2. Recreate branch:
+   ```bash
+   git checkout -b [branch-name] [commit-sha]
+   git push origin [branch-name]
+   ```
+
+**After 90 days:** Commits may be garbage collected (permanent loss)
+
+### Metrics
+
+**Healthy repository:**
+- Total branches: <10
+- Active branches: 2-5
+- Stale branches (>30 days): 0
+- Branch lifetime: <7 days average
+
+**Repository health indicators:**
+- ✅ **Good:** 5 branches (1 main + 4 active PRs)
+- ⚠️ **Warning:** 15 branches (1 main + 14 with 10 stale)
+- 🚨 **Critical:** 60+ branches (1 main + 59 stale/merged)
+
+**This repository before cleanup (November 2025):**
+- Status: 🚨 Critical (60 total, 58 stale)
+- Action: Immediate cleanup required
+- Result: Reduced to <5 branches
+
+### Additional Resources
+
+- **GitHub Branch Management Docs:** https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-branches
+- **Automated Branch Cleanup Actions:** https://github.com/marketplace?type=actions&query=stale+branches
+- **Branch Cleanup Scripts:** See `cleanup-branches.sh` and `BRANCH_CLEANUP_SUMMARY.md` in repository
+
+---
