@@ -67,6 +67,7 @@ import TextHighlighter from './services/TextHighlighter';
 // Utilities
 import {
     calculateBoundingBox,
+    normalizeCoordinates,
     addExtractionMarker,
     addExtractionMarkersForPage,
     autoAdvanceField,
@@ -789,8 +790,9 @@ function configureBackendProxy() {
  */
 function exposeWindowAPI() {
     window.ClinicalExtractor = {
-        // Helper Functions (6)
+        // Helper Functions (7)
         calculateBoundingBox,
+        normalizeCoordinates,
         addExtractionMarker,
         addExtractionMarkersForPage,
         autoAdvanceField,

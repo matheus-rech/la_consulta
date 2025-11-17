@@ -19,14 +19,20 @@ import type { Section, Paragraph } from '../services/TextStructureService';
 
 /**
  * Coordinates defining a bounding box for extracted text on a PDF page.
+ * Uses x/y as the canonical coordinate system.
+ * 
+ * @deprecated left/top properties are deprecated; use x/y instead.
+ * The normalizeCoordinates utility function converts legacy data.
  */
 export interface Coordinates {
-  /** Left/X position in PDF coordinates */
-  left?: number;
+  /** X position in PDF coordinates (canonical) */
   x?: number;
-  /** Top/Y position in PDF coordinates */
-  top?: number;
+  /** Y position in PDF coordinates (canonical) */
   y?: number;
+  /** @deprecated Use x instead */
+  left?: number;
+  /** @deprecated Use y instead */
+  top?: number;
   /** Width of the bounding box */
   width: number;
   /** Height of the bounding box */
