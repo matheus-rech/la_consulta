@@ -14,19 +14,29 @@
 import type { TextChunk, CitationMap } from '../services/CitationService';
 // Import text structure types
 import type { Section, Paragraph } from '../services/TextStructureService';
+// Import figure and table extraction types
+import type { ExtractedFigure } from '../services/FigureExtractor';
+import type { ExtractedTable } from '../services/TableExtractor';
+import type { EnhancedFigure, EnhancedTable } from '../services/AgentOrchestrator';
 
 // ==================== EXTRACTION TYPES ====================
 
 /**
  * Coordinates defining a bounding box for extracted text on a PDF page.
+ * Uses x/y as the canonical coordinate system.
+ * 
+ * @deprecated left/top properties are deprecated; use x/y instead.
+ * The normalizeCoordinates utility function converts legacy data.
  */
 export interface Coordinates {
-  /** Left/X position in PDF coordinates */
-  left?: number;
+  /** X position in PDF coordinates (canonical) */
   x?: number;
-  /** Top/Y position in PDF coordinates */
-  top?: number;
+  /** Y position in PDF coordinates (canonical) */
   y?: number;
+  /** @deprecated Use x instead */
+  left?: number;
+  /** @deprecated Use y instead */
+  top?: number;
   /** Width of the bounding box */
   width: number;
   /** Height of the bounding box */
@@ -184,13 +194,15 @@ export interface AppState {
   /**
    * Extracted figures from PDF using operator interception
    * Each figure includes data URL, dimensions, and extraction metadata
+   * Can be ExtractedFigure or EnhancedFigure (after AI processing)
    */
-  extractedFigures?: any[];
+  extractedFigures?: Array<ExtractedFigure | EnhancedFigure>;
   /**
    * Extracted tables from PDF using geometric detection
    * Each table includes headers, rows, column positions, and bounding box
+   * Can be ExtractedTable or EnhancedTable (after AI processing)
    */
-  extractedTables?: any[];
+  extractedTables?: Array<ExtractedTable | EnhancedTable>;
 
   // ==================== NEW: TEXT STRUCTURE (SECTIONS & PARAGRAPHS) 📚 ====================
   /**

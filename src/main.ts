@@ -61,10 +61,13 @@ import {
 import FigureExtractor from './services/FigureExtractor';
 import TableExtractor from './services/TableExtractor';
 import AgentOrchestrator from './services/AgentOrchestrator';
+import ProvenanceExporter from './services/ProvenanceExporter';
+import TextHighlighter from './services/TextHighlighter';
 
 // Utilities
 import {
     calculateBoundingBox,
+    normalizeCoordinates,
     addExtractionMarker,
     addExtractionMarkersForPage,
     autoAdvanceField,
@@ -787,8 +790,9 @@ function configureBackendProxy() {
  */
 function exposeWindowAPI() {
     window.ClinicalExtractor = {
-        // Helper Functions (6)
+        // Helper Functions (7)
         calculateBoundingBox,
+        normalizeCoordinates,
         addExtractionMarker,
         addExtractionMarkersForPage,
         autoAdvanceField,
@@ -821,6 +825,9 @@ function exposeWindowAPI() {
         exportExcel,
         exportAudit,
         exportAnnotatedPDF,
+        
+        exportWithFullProvenance: ProvenanceExporter.exportWithFullProvenance,
+        downloadProvenanceJSON: ProvenanceExporter.downloadProvenanceJSON,
 
         // Search Functions (2)
         toggleSearchInterface,
@@ -839,6 +846,7 @@ function exposeWindowAPI() {
         AnnotationService,
         BackendProxyService,
         SamplePDFService,
+        TextHighlighter,
 
         toggleSemanticSearch,
         performSemanticSearch,
@@ -899,6 +907,10 @@ async function initializeApp() {
 
         FormManager.initialize();
         console.log('✓ Form Manager initialized');
+
+        // Configure TextHighlighter with PDF container
+        TextHighlighter.configure({ container: '.pdf-page' });
+        console.log('✓ Text Highlighter configured');
 
         // Initialize backend authentication
         await AuthManager.initialize();
