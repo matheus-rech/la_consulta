@@ -18,6 +18,10 @@
 import AppStateManager from '../state/AppStateManager';
 import ExtractionTracker from '../data/ExtractionTracker';
 import type { TextChunk } from './CitationService';
+import type { ExtractedFigure } from './FigureExtractor';
+import type { ExtractedTable } from './TableExtractor';
+import type { EnhancedFigure, EnhancedTable } from './AgentOrchestrator';
+
 
 export interface ProvenanceExport {
     document: {
@@ -125,21 +129,21 @@ export const ProvenanceExporter = {
                 isHeading: chunk.isHeading,
                 confidence: 1.0,
             })),
-            tables: tables.map((table: any) => ({
+            tables: tables.map((table: ExtractedTable | EnhancedTable) => ({
                 id: table.id,
                 pageNum: table.pageNum,
-                title: table.title,
+                title: undefined, // ExtractedTable does not have title property
                 bbox: table.boundingBox || { x: 0, y: 0, width: 0, height: 0 },
                 headers: table.headers || [],
                 rows: table.rows || [],
                 extractionMethod: table.extractionMethod || 'geometric_detection',
                 csvExport: generateCSV(table),
             })),
-            figures: figures.map((fig: any) => ({
+            figures: figures.map((fig: ExtractedFigure | EnhancedFigure) => ({
                 id: fig.id,
                 pageNum: fig.pageNum,
-                caption: fig.caption,
-                bbox: fig.boundingBox,
+                caption: undefined, // ExtractedFigure does not have caption property
+                bbox: undefined, // ExtractedFigure does not have boundingBox property, only metadata
                 width: fig.width,
                 height: fig.height,
                 extractionMethod: fig.extractionMethod || 'operator_list_interception',

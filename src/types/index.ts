@@ -14,6 +14,10 @@
 import type { TextChunk, CitationMap } from '../services/CitationService';
 // Import text structure types
 import type { Section, Paragraph } from '../services/TextStructureService';
+// Import figure and table extraction types
+import type { ExtractedFigure } from '../services/FigureExtractor';
+import type { ExtractedTable } from '../services/TableExtractor';
+import type { EnhancedFigure, EnhancedTable } from '../services/AgentOrchestrator';
 
 // ==================== EXTRACTION TYPES ====================
 
@@ -190,13 +194,15 @@ export interface AppState {
   /**
    * Extracted figures from PDF using operator interception
    * Each figure includes data URL, dimensions, and extraction metadata
+   * Can be ExtractedFigure or EnhancedFigure (after AI processing)
    */
-  extractedFigures?: any[];
+  extractedFigures?: Array<ExtractedFigure | EnhancedFigure>;
   /**
    * Extracted tables from PDF using geometric detection
    * Each table includes headers, rows, column positions, and bounding box
+   * Can be ExtractedTable or EnhancedTable (after AI processing)
    */
-  extractedTables?: any[];
+  extractedTables?: Array<ExtractedTable | EnhancedTable>;
 
   // ==================== NEW: TEXT STRUCTURE (SECTIONS & PARAGRAPHS) 📚 ====================
   /**
