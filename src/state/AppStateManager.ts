@@ -4,6 +4,8 @@
  */
 
 import type { AppState } from '../types';
+import LRUCache from '../utils/LRUCache';
+import type { PageTextData } from '../types';
 
 /**
  * AppStateManager - Singleton state management with observer pattern.
@@ -71,7 +73,7 @@ class AppStateManagerClass {
       totalSteps: 8,
       markdownContent: '',
       markdownLoaded: false,
-      pdfTextCache: new Map<number, { fullText: string; items: any[] }>(),
+      pdfTextCache: new LRUCache<number, PageTextData>(50),
       searchMarkers: [],
       maxCacheSize: 50,
       isProcessing: false,
@@ -103,7 +105,7 @@ class AppStateManagerClass {
    * Gets a deep copy of the current application state.
    * Returns a copy to prevent unwanted mutations of the internal state.
    *
-   * Note: pdfTextCache is cloned as a new Map to preserve immutability.
+   * Note: pdfTextCache uses LRUCache which handles its own state management.
    *
    * @returns Deep copy of the current AppState
    */
@@ -111,8 +113,8 @@ class AppStateManagerClass {
     // Create a deep copy to prevent external mutations
     return {
       ...this.state,
-      // Clone the Map to ensure immutability
-      pdfTextCache: new Map(this.state.pdfTextCache),
+      // LRUCache is already an instance, return reference (LRUCache handles its own immutability)
+      pdfTextCache: this.state.pdfTextCache,
       // Clone arrays to prevent mutation
       extractions: [...this.state.extractions],
       searchMarkers: [...this.state.searchMarkers]
@@ -123,8 +125,8 @@ class AppStateManagerClass {
    * Updates the application state with partial updates.
    * Merges the provided updates with the current state and notifies all subscribers.
    *
-   * Special handling for Map objects:
-   * - If pdfTextCache is provided, it replaces the existing Map entirely
+   * Special handling for cache objects:
+   * - If pdfTextCache is provided, it replaces the existing LRUCache entirely
    * - Arrays are replaced, not merged
    *
    * @param updates - Partial state object with properties to update
@@ -144,7 +146,7 @@ class AppStateManagerClass {
    * // Update with complex objects
    * appStateManager.setState({
    *   extractions: [...state.extractions, newExtraction],
-   *   pdfTextCache: new Map(state.pdfTextCache.set(1, 'text'))
+   *   pdfTextCache: new LRUCache<number, PageTextData>(50) // Creates new cache instance
    * });
    * ```
    */
@@ -224,7 +226,7 @@ class AppStateManagerClass {
       totalSteps: 8,
       markdownContent: '',
       markdownLoaded: false,
-      pdfTextCache: new Map<number, { fullText: string; items: any[] }>(),
+      pdfTextCache: new LRUCache<number, PageTextData>(50),
       searchMarkers: [],
       maxCacheSize: 50,
       isProcessing: false,
