@@ -147,23 +147,42 @@ class TableExtractor {
     /**
      * Step 4: Find table regions by detecting grid patterns
      * A table is: multiple consecutive rows with aligned columns
+     * 
+     * Improved filtering to reduce false positives:
+     * - Requires at least 2 columns (not 4) but with better validation
+     * - Minimum 3 rows (unchanged)
+     * - Row must have multiple distinct text items (not just spacing)
+     * - Column alignment must be consistent across rows
      */
     private detectTableRegions(rows: TextItem[][]): any[] {
         const tableRegions: any[] = []
         let currentTable: any = null
 
         rows.forEach((row, rowIndex) => {
+            // Filter out rows with too few items (likely not table rows)
+            if (row.length < 2) {
+                // End current table if exists
+                if (currentTable && currentTable.rows.length >= 3) {
+                    tableRegions.push(currentTable)
+                }
+                currentTable = null
+                return
+            }
+
             const columnPositions = this.detectColumnPositions(row)
 
-            // Check if row is part of a table
-            const hasMultipleColumns = columnPositions.length >= 4
+            // Require at least 2 columns, but validate it's a real table structure
+            // A real table should have multiple distinct text items aligned in columns
+            const hasTableStructure = columnPositions.length >= 2 && 
+                                     this.hasValidTableStructure(row, columnPositions)
+            
             const alignsWithTable = currentTable &&
                 this.alignsWithColumns(columnPositions, currentTable.columnPositions)
 
-            if (alignsWithTable) {
+            if (alignsWithTable && hasTableStructure) {
                 // Continue existing table
                 currentTable.rows.push(row)
-            } else if (hasMultipleColumns) {
+            } else if (hasTableStructure) {
                 // Start new table
                 if (currentTable && currentTable.rows.length >= 3) {
                     tableRegions.push(currentTable)
@@ -188,6 +207,50 @@ class TableExtractor {
         }
 
         return tableRegions
+    }
+
+    /**
+     * Validate that a row has a valid table structure
+     * Filters out false positives like:
+     * - Single long text spans with accidental spacing
+     * - Lists with bullets (not tables)
+     * - Headers/footers with centered text
+     */
+    private hasValidTableStructure(row: TextItem[], columnPositions: number[]): boolean {
+        // Must have at least 2 distinct text items
+        if (row.length < 2) {
+            return false
+        }
+
+        // Check that items are distributed across columns (not all in one column)
+        const itemsPerColumn = new Map<number, number>()
+        row.forEach(item => {
+            const colIndex = this.findClosestColumn(item.x, columnPositions)
+            itemsPerColumn.set(colIndex, (itemsPerColumn.get(colIndex) || 0) + 1)
+        })
+
+        // At least 2 columns should have items
+        const columnsWithItems = Array.from(itemsPerColumn.keys()).length
+        if (columnsWithItems < 2) {
+            return false
+        }
+
+        // Filter out rows that are just single words with spacing (common false positive)
+        // A real table row should have multiple distinct text segments
+        const distinctTextSegments = new Set(row.map(item => item.text.trim()).filter(t => t.length > 0))
+        if (distinctTextSegments.size < 2) {
+            return false
+        }
+
+        // Check for list-like patterns (bullets, numbers) - these aren't tables
+        const hasListPattern = row.some(item => 
+            /^[\u2022\u2023\u25E6\u2043\u2219\-\*\d+\.\)]\s/.test(item.text.trim())
+        )
+        if (hasListPattern && row.length <= 3) {
+            return false
+        }
+
+        return true
     }
 
     /**

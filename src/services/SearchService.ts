@@ -5,6 +5,7 @@
  */
 
 import AppStateManager from '../state/AppStateManager';
+import TextHighlighter from './TextHighlighter';
 import type { SearchMarker } from '../types';
 
 export interface SearchResult {
@@ -147,7 +148,7 @@ export const SearchService = {
     },
 
     /**
-     * Highlight search results on current page
+     * Highlight search results on current page using TextHighlighter
      */
     highlightResults: (pageNum: number): void => {
         const resultsOnPage = SearchService.currentResults.filter(r => r.page === pageNum);
@@ -156,47 +157,74 @@ export const SearchService = {
             return;
         }
 
-        const textLayer = document.querySelector('.textLayer');
-        if (!textLayer) {
-            return;
-        }
-
-        const markers: SearchMarker[] = [];
-
-        resultsOnPage.forEach(result => {
-            const spans = textLayer.querySelectorAll('span');
-            
-            spans.forEach(span => {
-                const spanText = span.textContent?.toLowerCase() || '';
-                
-                if (spanText.includes(SearchService.currentQuery)) {
-                    const marker = document.createElement('div');
-                    marker.className = 'search-marker';
-                    marker.style.position = 'absolute';
-                    marker.style.backgroundColor = 'rgba(255, 255, 0, 0.4)';
-                    marker.style.border = '1px solid rgba(255, 200, 0, 0.8)';
-                    marker.style.pointerEvents = 'none';
-
-                    const rect = span.getBoundingClientRect();
-                    const layerRect = textLayer.getBoundingClientRect();
-
-                    marker.style.left = (rect.left - layerRect.left) + 'px';
-                    marker.style.top = (rect.top - layerRect.top) + 'px';
-                    marker.style.width = rect.width + 'px';
-                    marker.style.height = rect.height + 'px';
-
-                    textLayer.appendChild(marker);
-
-                    markers.push({
-                        element: marker,
-                        page: pageNum,
-                        text: span.textContent || '',
+        // Use TextHighlighter for better highlighting if coordinates available
+        try {
+            // Highlight results that have bounding box coordinates
+            resultsOnPage.forEach(result => {
+                if (result.coordinates) {
+                    TextHighlighter.highlightBoundingBox({
+                        x: result.coordinates.left,
+                        y: result.coordinates.top,
+                        width: result.coordinates.width,
+                        height: result.coordinates.height
+                    }, {
+                        color: 'rgba(255, 255, 0, 0.3)',
+                        borderColor: 'rgba(255, 200, 0, 0.6)',
+                        borderWidth: 2,
+                        flash: false
                     });
                 }
             });
-        });
 
-        AppStateManager.setState({ searchMarkers: markers });
+            // Also maintain legacy markers for compatibility
+            const markers: SearchMarker[] = resultsOnPage.map(result => ({
+                element: null as any,
+                page: result.page,
+                text: result.text
+            }));
+
+            AppStateManager.setState({ searchMarkers: markers });
+        } catch (error) {
+            console.warn('TextHighlighter not available, using fallback highlighting', error);
+            // Fallback to original implementation
+            const textLayer = document.querySelector('.textLayer');
+            if (!textLayer) {
+                return;
+            }
+
+            const markers: SearchMarker[] = [];
+            resultsOnPage.forEach(result => {
+                const spans = textLayer.querySelectorAll('span');
+                spans.forEach(span => {
+                    const spanText = span.textContent?.toLowerCase() || '';
+                    if (spanText.includes(SearchService.currentQuery)) {
+                        const marker = document.createElement('div');
+                        marker.className = 'search-marker';
+                        marker.style.position = 'absolute';
+                        marker.style.backgroundColor = 'rgba(255, 255, 0, 0.4)';
+                        marker.style.border = '1px solid rgba(255, 200, 0, 0.8)';
+                        marker.style.pointerEvents = 'none';
+
+                        const rect = span.getBoundingClientRect();
+                        const layerRect = textLayer.getBoundingClientRect();
+
+                        marker.style.left = (rect.left - layerRect.left) + 'px';
+                        marker.style.top = (rect.top - layerRect.top) + 'px';
+                        marker.style.width = rect.width + 'px';
+                        marker.style.height = rect.height + 'px';
+
+                        textLayer.appendChild(marker);
+                        markers.push({
+                            element: marker,
+                            page: pageNum,
+                            text: span.textContent || '',
+                        });
+                    }
+                });
+            });
+
+            AppStateManager.setState({ searchMarkers: markers });
+        }
     },
 
     /**

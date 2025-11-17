@@ -223,6 +223,18 @@ export interface AppState {
    * Map from paragraph ID to section ID for fast lookup
    */
   paragraphIdToSectionId?: Map<number, number>;
+
+  // ==================== NEW: SEMANTIC SEARCH RESULTS 🔍 ====================
+  /**
+   * Results from semantic search for highlighting and navigation
+   */
+  semanticSearchResults?: Array<{
+    chunkIndex: number;
+    text: string;
+    pageNum: number;
+    score: number;
+    bbox?: { x: number; y: number; width: number; height: number };
+  }>;
 }
 
 // Re-export citation types for convenience
