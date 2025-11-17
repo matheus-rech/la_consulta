@@ -34,6 +34,7 @@ export interface ProxyRequest {
     params?: Record<string, string>;
     timeout?: number;
     cache?: boolean;
+    retryAttempts?: number;
 }
 
 export interface ProxyResponse<T = any> {
@@ -202,7 +203,8 @@ export const BackendProxyService = {
      */
     executeRequest: async <T = any>(
         request: ProxyRequest,
-        attempt = 1
+        attempt = 1,
+        maxRetries = BackendProxyService.config.retryAttempts ?? 3
     ): Promise<ProxyResponse<T>> => {
         const startTime = Date.now();
         const url = BackendProxyService.buildURL(request.url, request.params);
@@ -228,12 +230,12 @@ export const BackendProxyService = {
 
             clearTimeout(timeoutId);
 
-            const contentType = response.headers.get('content-type');
-            let data: any;
+            const contentType = response.headers.get('content-type') || '';
+            let data: any = null;
 
-            if (contentType?.includes('application/json')) {
+            if (contentType.includes('application/json') && typeof response.json === 'function') {
                 data = await response.json();
-            } else {
+            } else if (typeof response.text === 'function') {
                 data = await response.text();
             }
 
@@ -254,13 +256,19 @@ export const BackendProxyService = {
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            const isHttpError = error instanceof Error && error.message.startsWith('HTTP');
 
-            if (attempt < (BackendProxyService.config.retryAttempts || 3)) {
+            if (isHttpError) {
+                console.error(`❌ Request failed after ${attempt} attempts:`, errorMessage);
+                throw error;
+            }
+
+            if (attempt <= maxRetries) {
                 const delay = (BackendProxyService.config.retryDelay || 1000) * Math.pow(2, attempt - 1);
                 console.warn(`⚠️ Request failed (attempt ${attempt}), retrying in ${delay}ms...`);
                 
                 await new Promise(resolve => setTimeout(resolve, delay));
-                return BackendProxyService.executeRequest<T>(request, attempt + 1);
+                return BackendProxyService.executeRequest<T>(request, attempt + 1, maxRetries);
             }
 
             console.error(`❌ Request failed after ${attempt} attempts:`, errorMessage);
@@ -289,7 +297,8 @@ export const BackendProxyService = {
             }
         }
 
-        const response = await BackendProxyService.executeRequest<T>(request);
+        const maxRetries = request.retryAttempts ?? BackendProxyService.config.retryAttempts ?? 3;
+        const response = await BackendProxyService.executeRequest<T>(request, 1, maxRetries);
 
         if (
             request.cache !== false &&
@@ -457,7 +466,10 @@ export const BackendProxyService = {
      */
     batch: async <T = any>(requests: ProxyRequest[]): Promise<ProxyResponse<T>[]> => {
         const promises = requests.map(request => 
-            BackendProxyService.request<T>(request).catch(error => ({
+            BackendProxyService.request<T>({
+                ...request,
+                retryAttempts: request.retryAttempts ?? 0,
+            }).catch(error => ({
                 data: null,
                 status: 0,
                 statusText: error.message,

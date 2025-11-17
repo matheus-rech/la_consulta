@@ -22,6 +22,7 @@
 import SecurityUtils from '../utils/security';
 import { normalizeCoordinates } from '../utils/helpers';
 import type { Extraction, ExtractionMethod } from '../types';
+import TraceLogger from '../services/TraceLogger';
 
 // Type definitions for injected dependencies
 interface AppStateManager {
@@ -89,6 +90,8 @@ const ExtractionTracker: ExtractionTrackerType = {
      * Initialize the tracker by loading saved data from localStorage
      */
     init: function(): void {
+        TraceLogger.init('trace-log');
+        TraceLogger.setEntryClickHandler((extraction) => this.navigateToExtraction(extraction));
         this.loadFromStorage();
     },
 
@@ -146,6 +149,9 @@ const ExtractionTracker: ExtractionTrackerType = {
             method: sanitizedData.method as ExtractionMethod
         };
 
+        // Mutate original object so external references see normalized data
+        Object.assign(data, extraction);
+
         // Store extraction in array and map
         this.extractions.push(extraction);
         this.fieldMap.set(data.fieldName, extraction);
@@ -170,33 +176,7 @@ const ExtractionTracker: ExtractionTrackerType = {
      * @param extraction - Extraction to add to trace log
      */
     updateTraceLog: function(extraction: Extraction): void {
-        const logContainer = document.getElementById('trace-log');
-        if (!logContainer) return;
-
-        // Create trace entry element
-        const entry = document.createElement('div');
-        entry.className = 'trace-entry';
-        entry.dataset.extractionId = extraction.id;
-        entry.dataset.method = extraction.method;
-
-        // Truncate long text for display
-        const truncatedText = extraction.text.length > 80
-            ? extraction.text.substring(0, 80) + '...'
-            : extraction.text;
-
-        // Build entry HTML with sanitized content
-        entry.innerHTML = `
-            <span class="field-label">${SecurityUtils.escapeHtml(extraction.fieldName)}</span>
-            <span class="extracted-text">"${SecurityUtils.escapeHtml(truncatedText)}"</span>
-            <div class="metadata">
-                Page ${extraction.page} | ${extraction.method} | ${new Date(extraction.timestamp).toLocaleTimeString()}
-            </div>`;
-
-        // Add click handler for navigation
-        entry.onclick = () => this.navigateToExtraction(extraction);
-
-        // Insert at top of log (newest first)
-        logContainer.insertBefore(entry, logContainer.firstChild);
+        TraceLogger.logExtraction(extraction, () => this.navigateToExtraction(extraction));
     },
 
     /**
@@ -295,6 +275,7 @@ const ExtractionTracker: ExtractionTrackerType = {
 
             if (saved) {
                 this.extractions = JSON.parse(saved);
+                TraceLogger.clear();
 
                 // Normalize coordinates for legacy data that might have {left, top} format
                 this.extractions = this.extractions.map(ext => ({
@@ -305,7 +286,7 @@ const ExtractionTracker: ExtractionTrackerType = {
                 // Rebuild field map and trace log
                 this.extractions.forEach(ext => {
                     this.fieldMap.set(ext.fieldName, ext);
-                    this.updateTraceLog(ext);
+                    TraceLogger.logExtraction(ext, () => this.navigateToExtraction(ext));
                 });
 
                 // Update UI

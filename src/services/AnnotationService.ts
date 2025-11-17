@@ -72,14 +72,40 @@ export const AnnotationService = {
     isDrawing: false,
     currentPath: [] as Array<{x: number; y: number}>,
     currentAuthor: 'Anonymous',
+    interactionLayer: null as HTMLElement | null,
+    interactionPage: null as number | null,
+    interactionEnabled: false,
+    interactionState: {
+        startX: 0,
+        startY: 0,
+        currentX: 0,
+        currentY: 0,
+        freehandPath: [] as Array<{x: number; y: number}>,
+    },
 
     /**
      * Initialize annotation layer for a page
      */
     initializeLayer: (pageNum: number, container: HTMLElement): HTMLCanvasElement => {
-        if (AnnotationService.layers.has(pageNum)) {
-            const layer = AnnotationService.layers.get(pageNum)!;
-            return layer.canvas;
+        const existingLayer = AnnotationService.layers.get(pageNum);
+        const rect = typeof container.getBoundingClientRect === 'function'
+            ? container.getBoundingClientRect()
+            : { width: 0, height: 0 };
+        const width = rect.width || container.clientWidth || container.scrollWidth || 800;
+        const height = rect.height || container.clientHeight || container.scrollHeight || 1000;
+
+        if (existingLayer) {
+            const canvas = existingLayer.canvas;
+            canvas.width = width;
+            canvas.height = height;
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+
+            if (canvas.parentElement !== container) {
+                container.appendChild(canvas);
+            }
+
+            return canvas;
         }
 
         const canvas = document.createElement('canvas');
@@ -91,8 +117,6 @@ export const AnnotationService = {
         canvas.style.zIndex = '10';
 
         // Use clientWidth/clientHeight for reliable sizing, and set CSS style width/height to match
-        const width = container.clientWidth;
-        const height = container.clientHeight;
         canvas.width = width;
         canvas.height = height;
         canvas.style.width = width + 'px';
@@ -126,6 +150,7 @@ export const AnnotationService = {
         const layer = AnnotationService.layers.get(annotation.pageNum);
         if (layer) {
             layer.annotations.push(newAnnotation);
+            AnnotationService.renderAnnotations(annotation.pageNum);
         }
 
         AnnotationService.saveToStorage();
@@ -232,7 +257,13 @@ export const AnnotationService = {
             return;
         }
 
-        const ctx = layer.canvas.getContext('2d');
+        let ctx: CanvasRenderingContext2D | null = null;
+        try {
+            ctx = layer.canvas.getContext('2d');
+        } catch (error) {
+            console.warn('Canvas context not available for annotations.', error);
+            return;
+        }
         if (!ctx) return;
 
         ctx.clearRect(0, 0, layer.canvas.width, layer.canvas.height);
@@ -579,6 +610,160 @@ export const AnnotationService = {
             }
         });
         AnnotationService.layers.clear();
+        AnnotationService.disableInteraction();
+    },
+
+    /**
+     * Enable pointer interaction overlay for annotations
+     */
+    enableInteraction: (pageElement: HTMLElement, pageNum: number): void => {
+        AnnotationService.interactionEnabled = true;
+        AnnotationService.interactionPage = pageNum;
+
+        if (AnnotationService.interactionLayer && AnnotationService.interactionLayer.parentElement !== pageElement) {
+            AnnotationService.interactionLayer.parentElement?.removeChild(AnnotationService.interactionLayer);
+            AnnotationService.interactionLayer = null;
+        }
+
+        if (!AnnotationService.interactionLayer) {
+            const overlay = document.createElement('div');
+            overlay.className = 'annotation-interaction-layer';
+            overlay.style.position = 'absolute';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.zIndex = '20';
+            overlay.style.pointerEvents = 'auto';
+            overlay.style.cursor = AnnotationService.currentTool === 'note' ? 'pointer' : 'crosshair';
+
+            overlay.addEventListener('mousedown', AnnotationService.handlePointerDown);
+            window.addEventListener('mousemove', AnnotationService.handlePointerMove);
+            window.addEventListener('mouseup', AnnotationService.handlePointerUp);
+
+            pageElement.appendChild(overlay);
+            AnnotationService.interactionLayer = overlay;
+        } else {
+            AnnotationService.interactionLayer.style.cursor = AnnotationService.currentTool === 'note' ? 'pointer' : 'crosshair';
+        }
+    },
+
+    /**
+     * Disable annotation interaction overlay
+     */
+    disableInteraction: (): void => {
+        AnnotationService.interactionEnabled = false;
+        AnnotationService.interactionPage = null;
+        AnnotationService.isDrawing = false;
+        AnnotationService.interactionState.freehandPath = [];
+
+        if (AnnotationService.interactionLayer) {
+            AnnotationService.interactionLayer.removeEventListener('mousedown', AnnotationService.handlePointerDown);
+            window.removeEventListener('mousemove', AnnotationService.handlePointerMove);
+            window.removeEventListener('mouseup', AnnotationService.handlePointerUp);
+            AnnotationService.interactionLayer.parentElement?.removeChild(AnnotationService.interactionLayer);
+            AnnotationService.interactionLayer = null;
+        }
+    },
+
+    /**
+     * Ensure interaction layer stays in sync with rendered page
+     */
+    syncInteractionLayer: (pageNum: number, pageElement: HTMLElement): void => {
+        if (!AnnotationService.interactionEnabled) {
+            AnnotationService.disableInteraction();
+            return;
+        }
+        AnnotationService.enableInteraction(pageElement, pageNum);
+    },
+
+    handlePointerDown: (event: MouseEvent): void => {
+        if (!AnnotationService.interactionLayer || !AnnotationService.interactionEnabled) return;
+
+        const pageNum = AnnotationService.interactionPage ?? AppStateManager.getState().currentPage;
+        if (!pageNum) return;
+
+        const rect = AnnotationService.interactionLayer.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+
+        if (AnnotationService.currentTool === 'note') {
+            const comment = window.prompt('Note', '');
+            if (comment) {
+                AnnotationService.createNote(pageNum, x - 15, y - 15, comment);
+                AnnotationService.renderAnnotations(pageNum);
+            }
+            return;
+        }
+
+        AnnotationService.isDrawing = true;
+        AnnotationService.interactionState.startX = x;
+        AnnotationService.interactionState.startY = y;
+        AnnotationService.interactionState.currentX = x;
+        AnnotationService.interactionState.currentY = y;
+        AnnotationService.interactionState.freehandPath = [{ x, y }];
+    },
+
+    handlePointerMove: (event: MouseEvent): void => {
+        if (!AnnotationService.isDrawing || !AnnotationService.interactionLayer) return;
+
+        const rect = AnnotationService.interactionLayer.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+
+        AnnotationService.interactionState.currentX = x;
+        AnnotationService.interactionState.currentY = y;
+
+        if (AnnotationService.currentTool === 'freehand') {
+            AnnotationService.interactionState.freehandPath.push({ x, y });
+        }
+    },
+
+    handlePointerUp: (): void => {
+        if (!AnnotationService.isDrawing) return;
+
+        AnnotationService.isDrawing = false;
+
+        const pageNum = AnnotationService.interactionPage ?? AppStateManager.getState().currentPage;
+        if (!pageNum) return;
+
+        const { startX, startY, currentX, currentY, freehandPath } = AnnotationService.interactionState;
+        const width = currentX - startX;
+        const height = currentY - startY;
+
+        switch (AnnotationService.currentTool) {
+            case 'highlight':
+                if (Math.abs(width) > 5 && Math.abs(height) > 5) {
+                    AnnotationService.createHighlight(pageNum, Math.min(startX, currentX), Math.min(startY, currentY), Math.abs(width), Math.abs(height));
+                }
+                break;
+            case 'rectangle':
+            case 'circle':
+                if (Math.abs(width) > 5 && Math.abs(height) > 5) {
+                    AnnotationService.createShape(
+                        AnnotationService.currentTool,
+                        pageNum,
+                        startX,
+                        startY,
+                        currentX,
+                        currentY,
+                    );
+                }
+                break;
+            case 'arrow':
+                if (Math.abs(width) > 5 || Math.abs(height) > 5) {
+                    AnnotationService.createShape('arrow', pageNum, startX, startY, currentX, currentY);
+                }
+                break;
+            case 'freehand':
+                if (freehandPath.length > 2) {
+                    AnnotationService.createFreehand(pageNum, [freehandPath.slice()]);
+                }
+                break;
+        }
+
+        AnnotationService.renderAnnotations(pageNum);
+        AnnotationService.interactionState.freehandPath = [];
     },
 };
 

@@ -89,6 +89,18 @@ export interface ProvenanceExport {
         timestamp: string;
         confidence?: number;
     }>;
+    citations: Array<{
+        index: number;
+        sentence: string;
+        pageNum: number;
+        bbox: {
+            x: number;
+            y: number;
+            width: number;
+            height: number;
+        };
+        confidence?: number;
+    }>;
     coordinateProvenance: {
         method: string;
         preservesBoundingBoxes: boolean;
@@ -115,6 +127,7 @@ export const ProvenanceExporter = {
         
         const tables = state.extractedTables || [];
         const figures = state.extractedFigures || [];
+        const citationEntries = state.citationMap ? Object.values(state.citationMap) : [];
         
         const exportData: ProvenanceExport = {
             document: {
@@ -166,6 +179,13 @@ export const ProvenanceExporter = {
                 method: ext.method,
                 timestamp: ext.timestamp,
                 confidence: 1.0,
+            })),
+            citations: citationEntries.map((citation: any) => ({
+                index: citation.index,
+                sentence: citation.sentence,
+                pageNum: citation.pageNum,
+                bbox: citation.bbox,
+                confidence: citation.confidence,
             })),
             coordinateProvenance: {
                 method: 'pdfjs_direct_extraction',

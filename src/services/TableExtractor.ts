@@ -120,28 +120,35 @@ class TableExtractor {
      * Step 3: Detect column positions by clustering X coordinates
      * Items that align vertically (similar X positions) form columns
      */
-    private detectColumnPositions(row: TextItem[], tolerance = 10): number[] {
-        const positions = row.map(item => item.x)
+    private detectColumnPositions(row: TextItem[], gapThreshold = 24): number[] {
+        if (row.length === 0) return []
 
-        // Cluster nearby X positions
-        const clusters: number[][] = []
+        const columns: number[] = []
+        let currentCluster: TextItem[] = [row[0]]
+        let lastRight = row[0].x + row[0].width
 
-        positions.forEach(pos => {
-            const existingCluster = clusters.find(cluster =>
-                cluster.some(p => Math.abs(p - pos) < tolerance)
-            )
+        for (let i = 1; i < row.length; i++) {
+            const item = row[i]
+            const gap = item.x - lastRight
 
-            if (existingCluster) {
-                existingCluster.push(pos)
+            if (gap > gapThreshold) {
+                columns.push(this.averageX(currentCluster))
+                currentCluster = [item]
             } else {
-                clusters.push([pos])
+                currentCluster.push(item)
             }
-        })
 
-        // Return average of each cluster (the column position)
-        return clusters
-            .map(cluster => cluster.reduce((sum, val) => sum + val, 0) / cluster.length)
-            .sort((a, b) => a - b)
+            lastRight = Math.max(lastRight, item.x + item.width)
+        }
+
+        columns.push(this.averageX(currentCluster))
+        return columns.sort((a, b) => a - b)
+    }
+
+    private averageX(items: TextItem[]): number {
+        if (items.length === 0) return 0
+        const sum = items.reduce((total, item) => total + item.x, 0)
+        return sum / items.length
     }
 
     /**
@@ -155,15 +162,20 @@ class TableExtractor {
         rows.forEach((row, rowIndex) => {
             const columnPositions = this.detectColumnPositions(row)
 
-            // Check if row is part of a table
-            const hasMultipleColumns = columnPositions.length >= 4
+            // Row heuristics
+            const rowWidth = row.length ? (row[row.length - 1].x + row[row.length - 1].width) - row[0].x : 0
+            const hasMultipleColumns = columnPositions.length >= 3
+            const isWideEnough = rowWidth >= 150
+            const hasDensity = row.length >= columnPositions.length
+            const qualifiesAsTableRow = hasMultipleColumns && isWideEnough && hasDensity
+
             const alignsWithTable = currentTable &&
                 this.alignsWithColumns(columnPositions, currentTable.columnPositions)
 
             if (alignsWithTable) {
                 // Continue existing table
                 currentTable.rows.push(row)
-            } else if (hasMultipleColumns) {
+            } else if (qualifiesAsTableRow) {
                 // Start new table
                 if (currentTable && currentTable.rows.length >= 3) {
                     tableRegions.push(currentTable)
@@ -234,13 +246,15 @@ class TableExtractor {
         const headers = grid[0]
         const dataRows = grid.slice(1)
 
-        return {
+        const structured = {
             headers,
             rows: dataRows,
             rawGrid: grid,
             columnPositions,
             boundingBox: this.calculateBoundingBox(rows.flat()),
         }
+
+        return structured
     }
 
     /**

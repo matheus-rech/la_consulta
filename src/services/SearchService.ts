@@ -5,19 +5,16 @@
  */
 
 import AppStateManager from '../state/AppStateManager';
-import type { SearchMarker } from '../types';
+import TextHighlighter from './TextHighlighter';
+import type { TextChunk } from './CitationService';
 
 export interface SearchResult {
     page: number;
     text: string;
     context: string;
     index: number;
-    coordinates?: {
-        left: number;
-        top: number;
-        width: number;
-        height: number;
-    };
+    chunkIndex?: number;
+    bbox?: TextChunk['bbox'];
 }
 
 export const SearchService = {
@@ -35,49 +32,68 @@ export const SearchService = {
         }
 
         const state = AppStateManager.getState();
-        if (!state.pdfDoc) {
-            console.warn('No PDF document loaded');
-            return [];
-        }
-
         SearchService.currentQuery = query.toLowerCase();
         SearchService.currentResults = [];
 
-        const pdfDoc = state.pdfDoc as any;
-        const totalPages = state.totalPages;
+        const textChunks: TextChunk[] = state.textChunks || [];
 
-        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-            try {
-                const page = await pdfDoc.getPage(pageNum);
-                const textContent = await page.getTextContent();
-                
-                const pageText = textContent.items
-                    .map((item: any) => item.str)
-                    .join(' ');
+        if (textChunks.length > 0) {
+            textChunks.forEach(chunk => {
+                const chunkText = chunk.text || '';
+                const matchIndex = chunkText.toLowerCase().indexOf(SearchService.currentQuery);
 
-                const lowerPageText = pageText.toLowerCase();
-                let startIndex = 0;
-
-                while (true) {
-                    const index = lowerPageText.indexOf(SearchService.currentQuery, startIndex);
-                    
-                    if (index === -1) break;
-
-                    const contextStart = Math.max(0, index - 50);
-                    const contextEnd = Math.min(pageText.length, index + SearchService.currentQuery.length + 50);
-                    const context = pageText.substring(contextStart, contextEnd);
-
+                if (matchIndex !== -1) {
                     SearchService.currentResults.push({
-                        page: pageNum,
-                        text: pageText.substring(index, index + SearchService.currentQuery.length),
-                        context: context,
+                        page: chunk.pageNum,
+                        text: chunkText.substring(matchIndex, matchIndex + SearchService.currentQuery.length),
+                        context: chunkText,
                         index: SearchService.currentResults.length,
+                        chunkIndex: chunk.index,
+                        bbox: chunk.bbox,
                     });
-
-                    startIndex = index + 1;
                 }
-            } catch (error) {
-                console.error(`Error searching page ${pageNum}:`, error);
+            });
+        } else {
+            console.warn('No sentence-level text chunks available; falling back to slower PDF scan.');
+            if (!state.pdfDoc) {
+                return [];
+            }
+
+            const pdfDoc = state.pdfDoc as any;
+            const totalPages = state.totalPages;
+
+            for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+                try {
+                    const page = await pdfDoc.getPage(pageNum);
+                    const textContent = await page.getTextContent();
+                    
+                    const pageText = textContent.items
+                        .map((item: any) => item.str)
+                        .join(' ');
+
+                    const lowerPageText = pageText.toLowerCase();
+                    let startIndex = 0;
+
+                    while (true) {
+                        const matchPosition = lowerPageText.indexOf(SearchService.currentQuery, startIndex);
+                        if (matchPosition === -1) break;
+
+                        const contextStart = Math.max(0, matchPosition - 50);
+                        const contextEnd = Math.min(pageText.length, matchPosition + SearchService.currentQuery.length + 50);
+                        const context = pageText.substring(contextStart, contextEnd);
+
+                        SearchService.currentResults.push({
+                            page: pageNum,
+                            text: pageText.substring(matchPosition, matchPosition + SearchService.currentQuery.length),
+                            context,
+                            index: SearchService.currentResults.length,
+                        });
+
+                        startIndex = matchPosition + SearchService.currentQuery.length;
+                    }
+                } catch (error) {
+                    console.error(`Error searching page ${pageNum}:`, error);
+                }
             }
         }
 
@@ -134,69 +150,23 @@ export const SearchService = {
         SearchService.currentResults = [];
         SearchService.currentIndex = -1;
 
-        const state = AppStateManager.getState();
-        const markers = state.searchMarkers;
-
-        markers.forEach(marker => {
-            if (marker.element && marker.element.parentNode) {
-                marker.element.parentNode.removeChild(marker.element);
-            }
-        });
-
-        AppStateManager.setState({ searchMarkers: [] });
+        TextHighlighter.clearHighlights();
     },
 
     /**
-     * Highlight search results on current page
+     * Highlight search results on the specified page using TextHighlighter
      */
-    highlightResults: (pageNum: number): void => {
-        const resultsOnPage = SearchService.currentResults.filter(r => r.page === pageNum);
-        
-        if (resultsOnPage.length === 0) {
+    highlightResultsForPage: (pageNum: number): void => {
+        const chunkIndices = SearchService.currentResults
+            .filter(result => result.page === pageNum && typeof result.chunkIndex === 'number')
+            .map(result => result.chunkIndex as number);
+
+        if (chunkIndices.length === 0) {
+            TextHighlighter.clearHighlights();
             return;
         }
 
-        const textLayer = document.querySelector('.textLayer');
-        if (!textLayer) {
-            return;
-        }
-
-        const markers: SearchMarker[] = [];
-
-        resultsOnPage.forEach(result => {
-            const spans = textLayer.querySelectorAll('span');
-            
-            spans.forEach(span => {
-                const spanText = span.textContent?.toLowerCase() || '';
-                
-                if (spanText.includes(SearchService.currentQuery)) {
-                    const marker = document.createElement('div');
-                    marker.className = 'search-marker';
-                    marker.style.position = 'absolute';
-                    marker.style.backgroundColor = 'rgba(255, 255, 0, 0.4)';
-                    marker.style.border = '1px solid rgba(255, 200, 0, 0.8)';
-                    marker.style.pointerEvents = 'none';
-
-                    const rect = span.getBoundingClientRect();
-                    const layerRect = textLayer.getBoundingClientRect();
-
-                    marker.style.left = (rect.left - layerRect.left) + 'px';
-                    marker.style.top = (rect.top - layerRect.top) + 'px';
-                    marker.style.width = rect.width + 'px';
-                    marker.style.height = rect.height + 'px';
-
-                    textLayer.appendChild(marker);
-
-                    markers.push({
-                        element: marker,
-                        page: pageNum,
-                        text: span.textContent || '',
-                    });
-                }
-            });
-        });
-
-        AppStateManager.setState({ searchMarkers: markers });
+        TextHighlighter.highlightSearchResults(chunkIndices);
     },
 
     /**
