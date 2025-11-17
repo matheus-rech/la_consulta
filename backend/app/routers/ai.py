@@ -3,7 +3,6 @@ AI proxy endpoints - Securely proxy Gemini API calls
 This is the critical security fix: API key is now server-side only
 """
 from fastapi import APIRouter, HTTPException, status, Depends
-from typing import Dict, Any
 import google.generativeai as genai
 from ..models import (
     User,
