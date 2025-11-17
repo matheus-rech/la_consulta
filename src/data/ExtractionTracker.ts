@@ -20,6 +20,7 @@
  */
 
 import SecurityUtils from '../utils/security';
+import { normalizeCoordinates } from '../utils/helpers';
 import type { Extraction, ExtractionMethod } from '../types';
 
 // Type definitions for injected dependencies
@@ -119,7 +120,9 @@ const ExtractionTracker: ExtractionTrackerType = {
             ...data,
             text: SecurityUtils.sanitizeText(data.text),
             fieldName: SecurityUtils.sanitizeText(data.fieldName),
-            documentName: SecurityUtils.sanitizeText(data.documentName)
+            documentName: SecurityUtils.sanitizeText(data.documentName),
+            // Normalize coordinates to use x/y structure
+            coordinates: normalizeCoordinates(data.coordinates)
         };
 
         // Create temporary extraction for validation
@@ -292,6 +295,12 @@ const ExtractionTracker: ExtractionTrackerType = {
 
             if (saved) {
                 this.extractions = JSON.parse(saved);
+
+                // Normalize coordinates for legacy data that might have {left, top} format
+                this.extractions = this.extractions.map(ext => ({
+                    ...ext,
+                    coordinates: normalizeCoordinates(ext.coordinates)
+                }));
 
                 // Rebuild field map and trace log
                 this.extractions.forEach(ext => {
