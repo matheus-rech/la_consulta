@@ -723,7 +723,7 @@ async function jumpToPage(pageNum: number) {
         return;
     }
     
-    await PDFRenderer.renderPage(state.pdfDoc, pageNum);
+    await PDFRenderer.renderPage(pageNum, TextSelection);
 }
 
 /**
