@@ -212,7 +212,7 @@ The app follows a strict initialization order in `main.ts`:
 
 ---
 
-## Citation Provenance System ⭐ NEW (Nobel Prize-Worthy! 🏆)
+## Citation Provenance System ⭐ NEW (Enterprise-Grade Citation Provenance System)
 
 The **CitationService** (`src/services/CitationService.ts`) implements a complete sentence-level citation tracking system that enables reproducible medical research with full coordinate provenance.
 
