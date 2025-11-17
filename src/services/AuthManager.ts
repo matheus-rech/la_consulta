@@ -8,8 +8,8 @@ import BackendClient from './BackendClient';
 import StatusManager from '../utils/status';
 
 const DEFAULT_USER = {
-  email: 'default@clinicalextractor.local',
-  password: 'clinical_extractor_default_2024'
+  email: import.meta.env.VITE_DEFAULT_USER_EMAIL || 'default@clinicalextractor.local',
+  password: import.meta.env.VITE_DEFAULT_USER_PASSWORD || 'clinical_extractor_default_2024'
 };
 
 class AuthManager {
@@ -26,7 +26,10 @@ class AuthManager {
           await BackendClient.login(DEFAULT_USER.email, DEFAULT_USER.password);
           console.log('✅ Authenticated with backend');
         } catch (loginError: any) {
-          if (loginError.message.includes('Incorrect email or password')) {
+          // Check for 401 Unauthorized status, which means user doesn't exist or wrong password
+          // More robust than checking error message text
+          if (loginError.status === 401 || 
+              (loginError.message && loginError.message.includes('Incorrect email or password'))) {
             await BackendClient.register(DEFAULT_USER.email, DEFAULT_USER.password);
             console.log('✅ Registered and authenticated with backend');
           } else {

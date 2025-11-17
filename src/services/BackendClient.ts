@@ -45,8 +45,15 @@ class BackendClient {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Registration failed');
+      let errorDetail = 'Registration failed';
+      try {
+        const error = await response.json();
+        errorDetail = error.detail || error.message || errorDetail;
+      } catch {
+        const text = await response.text().catch(() => '');
+        errorDetail = text || errorDetail;
+      }
+      throw new Error(errorDetail);
     }
 
     const tokens: AuthTokens = await response.json();
@@ -64,8 +71,18 @@ class BackendClient {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Login failed');
+      let errorDetail = 'Login failed';
+      try {
+        const error = await response.json();
+        errorDetail = error.detail || error.message || errorDetail;
+      } catch {
+        const text = await response.text().catch(() => '');
+        errorDetail = text || errorDetail;
+      }
+      const error = new Error(errorDetail);
+      // Attach status code for better error handling
+      (error as any).status = response.status;
+      throw error;
     }
 
     const tokens: AuthTokens = await response.json();
@@ -108,38 +125,53 @@ class BackendClient {
     return response;
   }
 
-  async generatePICO(pdfText: string): Promise<any> {
+  async generatePICO(documentId: string, pdfText: string): Promise<any> {
     const response = await this.authenticatedRequest('/api/ai/generate-pico', {
       method: 'POST',
-      body: JSON.stringify({ pdf_text: pdfText }),
+      body: JSON.stringify({ document_id: documentId, pdf_text: pdfText }),
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'PICO generation failed');
+      let errorDetail = 'PICO generation failed';
+      try {
+        const error = await response.json();
+        errorDetail = error.detail || error.message || errorDetail;
+      } catch {
+        const text = await response.text().catch(() => '');
+        errorDetail = text || errorDetail;
+      }
+      throw new Error(errorDetail);
     }
 
     return await response.json();
   }
 
-  async generateSummary(pdfText: string): Promise<any> {
+  async generateSummary(documentId: string, pdfText: string): Promise<any> {
     const response = await this.authenticatedRequest('/api/ai/generate-summary', {
       method: 'POST',
-      body: JSON.stringify({ pdf_text: pdfText }),
+      body: JSON.stringify({ document_id: documentId, pdf_text: pdfText }),
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Summary generation failed');
+      let errorDetail = 'Summary generation failed';
+      try {
+        const error = await response.json();
+        errorDetail = error.detail || error.message || errorDetail;
+      } catch {
+        const text = await response.text().catch(() => '');
+        errorDetail = text || errorDetail;
+      }
+      throw new Error(errorDetail);
     }
 
     return await response.json();
   }
 
-  async validateField(fieldId: string, fieldValue: string, pdfText: string): Promise<any> {
+  async validateField(documentId: string, fieldId: string, fieldValue: string, pdfText: string): Promise<any> {
     const response = await this.authenticatedRequest('/api/ai/validate-field', {
       method: 'POST',
       body: JSON.stringify({
+        document_id: documentId,
         field_id: fieldId,
         field_value: fieldValue,
         pdf_text: pdfText,
@@ -147,70 +179,107 @@ class BackendClient {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Field validation failed');
+      let errorDetail = 'Field validation failed';
+      try {
+        const error = await response.json();
+        errorDetail = error.detail || error.message || errorDetail;
+      } catch {
+        const text = await response.text().catch(() => '');
+        errorDetail = text || errorDetail;
+      }
+      throw new Error(errorDetail);
     }
 
     return await response.json();
   }
 
-  async findMetadata(pdfText: string): Promise<any> {
+  async findMetadata(documentId: string, pdfText: string): Promise<any> {
     const response = await this.authenticatedRequest('/api/ai/find-metadata', {
       method: 'POST',
-      body: JSON.stringify({ pdf_text: pdfText }),
+      body: JSON.stringify({ document_id: documentId, pdf_text: pdfText }),
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Metadata search failed');
+      let errorDetail = 'Metadata search failed';
+      try {
+        const error = await response.json();
+        errorDetail = error.detail || error.message || errorDetail;
+      } catch {
+        const text = await response.text().catch(() => '');
+        errorDetail = text || errorDetail;
+      }
+      throw new Error(errorDetail);
     }
 
     return await response.json();
   }
 
-  async extractTables(pdfText: string): Promise<any> {
+  async extractTables(documentId: string, pdfText: string): Promise<any> {
     const response = await this.authenticatedRequest('/api/ai/extract-tables', {
       method: 'POST',
-      body: JSON.stringify({ pdf_text: pdfText }),
+      body: JSON.stringify({ document_id: documentId, pdf_text: pdfText }),
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Table extraction failed');
+      let errorDetail = 'Table extraction failed';
+      try {
+        const error = await response.json();
+        errorDetail = error.detail || error.message || errorDetail;
+      } catch {
+        const text = await response.text().catch(() => '');
+        errorDetail = text || errorDetail;
+      }
+      throw new Error(errorDetail);
     }
 
     return await response.json();
   }
 
-  async analyzeImage(imageBase64: string, prompt: string): Promise<any> {
+  async analyzeImage(documentId: string, imageBase64: string, prompt: string): Promise<any> {
     const response = await this.authenticatedRequest('/api/ai/analyze-image', {
       method: 'POST',
       body: JSON.stringify({
+        document_id: documentId,
         image_base64: imageBase64,
         prompt: prompt,
       }),
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Image analysis failed');
+      let errorDetail = 'Image analysis failed';
+      try {
+        const error = await response.json();
+        errorDetail = error.detail || error.message || errorDetail;
+      } catch {
+        const text = await response.text().catch(() => '');
+        errorDetail = text || errorDetail;
+      }
+      throw new Error(errorDetail);
     }
 
     return await response.json();
   }
 
-  async deepAnalysis(pdfText: string, prompt: string): Promise<any> {
+  async deepAnalysis(documentId: string, pdfText: string, prompt: string): Promise<any> {
     const response = await this.authenticatedRequest('/api/ai/deep-analysis', {
       method: 'POST',
       body: JSON.stringify({
+        document_id: documentId,
         pdf_text: pdfText,
         prompt: prompt,
       }),
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Deep analysis failed');
+      let errorDetail = 'Deep analysis failed';
+      try {
+        const error = await response.json();
+        errorDetail = error.detail || error.message || errorDetail;
+      } catch {
+        const text = await response.text().catch(() => '');
+        errorDetail = text || errorDetail;
+      }
+      throw new Error(errorDetail);
     }
 
     return await response.json();
