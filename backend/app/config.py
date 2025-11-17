@@ -11,8 +11,8 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str
     ANTHROPIC_API_KEY: str = ""
     
-    GEMINI_MODEL: str = "gemini-1.5-flash-latest"
-    ANTHROPIC_MODEL: str = "claude-3-5-sonnet-20241022"
+    GEMINI_MODEL: str = "gemini-1.5-flash"
+    ANTHROPIC_MODEL: str = "claude-3-5-sonnet-20240620"
     
     LLM_PRIMARY: str = "gemini"
     LLM_FALLBACK: str = "anthropic"
