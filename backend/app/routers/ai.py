@@ -10,7 +10,7 @@ from ..models import (
     SummaryRequest, SummaryResponse,
     ValidationRequest, ValidationResponse,
     MetadataRequest, MetadataResponse,
-    TableExtractionRequest, TableExtractionResponse, TableData,
+    TableExtractionRequest, TableExtractionResponse,
     ImageAnalysisRequest, ImageAnalysisResponse,
     DeepAnalysisRequest, DeepAnalysisResponse
 )
