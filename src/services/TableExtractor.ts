@@ -214,7 +214,15 @@ class TableExtractor {
      * Filters out tiny "tables" that are just formatted text
      */
     private isValidTable(tableRegion: any): boolean {
-        if (!tableRegion.rows || tableRegion.rows.length < 3) {
+        const MIN_TABLE_ROWS = 3;
+        const MIN_TABLE_WIDTH = 200;
+        const MIN_TABLE_HEIGHT = 50;
+        const MAX_ASPECT_RATIO = 10;
+        const MIN_ASPECT_RATIO = 0.1;
+        const MIN_TABLE_COLUMNS = 4;
+        const MIN_COLUMN_SPACING = 30;
+
+        if (!tableRegion.rows || tableRegion.rows.length < MIN_TABLE_ROWS) {
             return false
         }
 
@@ -238,25 +246,19 @@ class TableExtractor {
         const height = maxY - minY
 
         // TIGHTENED: Require minimum table dimensions
-        // Tables should be at least 200px wide and 50px tall
-        const minWidth = 200
-        const minHeight = 50
-
-        if (width < minWidth || height < minHeight) {
+        if (width < MIN_TABLE_WIDTH || height < MIN_TABLE_HEIGHT) {
             return false
         }
 
         // Additional check: table should have reasonable aspect ratio
-        // Very wide or very tall regions are likely not tables
         const aspectRatio = width / height
-        if (aspectRatio > 10 || aspectRatio < 0.1) {
+        if (aspectRatio > MAX_ASPECT_RATIO || aspectRatio < MIN_ASPECT_RATIO) {
             return false
         }
 
         // Check that we have multiple distinct columns
-        // If all columns are too close together, it's probably not a table
         const columnPositions = tableRegion.columnPositions
-        if (columnPositions.length < 4) {
+        if (columnPositions.length < MIN_TABLE_COLUMNS) {
             return false
         }
 
@@ -264,7 +266,7 @@ class TableExtractor {
         let hasGoodSpacing = false
         for (let i = 1; i < columnPositions.length; i++) {
             const spacing = columnPositions[i] - columnPositions[i - 1]
-            if (spacing > 30) { // At least 30px between columns
+            if (spacing > MIN_COLUMN_SPACING) { // At least 30px between columns
                 hasGoodSpacing = true
                 break
             }
