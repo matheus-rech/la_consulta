@@ -31,7 +31,7 @@ function initializeGeminiFallback() {
                 console.log('✅ Gemini fallback initialized');
                 return true;
             } else {
-                console.warn('⚠️ GEMINI_API_KEY not found - backend fallback will not work');
+                console.warn('⚠️ GEMINI_API_KEY not found - Gemini fallback (frontend-only mode) will not work');
                 return false;
             }
         } else {
