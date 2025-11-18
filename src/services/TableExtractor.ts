@@ -253,7 +253,6 @@ class TableExtractor {
         })
 
         // Don't forget the last table
-        if (currentTable && currentTable.rows.length >= 3) {
         if (currentTable) {
             this.computeTableProperties(currentTable)
             if (this.isValidTable(currentTable)) {
