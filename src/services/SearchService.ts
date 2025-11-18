@@ -5,6 +5,7 @@
  */
 
 import AppStateManager from '../state/AppStateManager';
+import TextHighlighter from './TextHighlighter';
 import type { SearchMarker } from '../types';
 
 export interface SearchResult {
@@ -134,6 +135,9 @@ export const SearchService = {
         SearchService.currentResults = [];
         SearchService.currentIndex = -1;
 
+        // Clear TextHighlighter overlays
+        TextHighlighter.clearHighlights();
+
         const state = AppStateManager.getState();
         const markers = state.searchMarkers;
 
@@ -147,7 +151,7 @@ export const SearchService = {
     },
 
     /**
-     * Highlight search results on current page
+     * Highlight search results on current page using TextHighlighter
      */
     highlightResults: (pageNum: number): void => {
         const resultsOnPage = SearchService.currentResults.filter(r => r.page === pageNum);
@@ -156,47 +160,59 @@ export const SearchService = {
             return;
         }
 
-        const textLayer = document.querySelector('.textLayer');
-        if (!textLayer) {
-            return;
-        }
-
-        const markers: SearchMarker[] = [];
-
+        // Use TextHighlighter for visual highlighting
         resultsOnPage.forEach(result => {
-            const spans = textLayer.querySelectorAll('span');
-            
-            spans.forEach(span => {
-                const spanText = span.textContent?.toLowerCase() || '';
-                
-                if (spanText.includes(SearchService.currentQuery)) {
-                    const marker = document.createElement('div');
-                    marker.className = 'search-marker';
-                    marker.style.position = 'absolute';
-                    marker.style.backgroundColor = 'rgba(255, 255, 0, 0.4)';
-                    marker.style.border = '1px solid rgba(255, 200, 0, 0.8)';
-                    marker.style.pointerEvents = 'none';
-
-                    const rect = span.getBoundingClientRect();
-                    const layerRect = textLayer.getBoundingClientRect();
-
-                    marker.style.left = (rect.left - layerRect.left) + 'px';
-                    marker.style.top = (rect.top - layerRect.top) + 'px';
-                    marker.style.width = rect.width + 'px';
-                    marker.style.height = rect.height + 'px';
-
-                    textLayer.appendChild(marker);
-
-                    markers.push({
-                        element: marker,
-                        page: pageNum,
-                        text: span.textContent || '',
-                    });
-                }
-            });
+            if (result.coordinates) {
+                // Convert left/top to x/y for TextHighlighter
+                TextHighlighter.highlightBoundingBox({
+                    x: result.coordinates.left,
+                    y: result.coordinates.top,
+                    width: result.coordinates.width,
+                    height: result.coordinates.height,
+                }, {
+                    color: 'rgba(255, 255, 0, 0.4)',
+                    borderColor: 'rgba(255, 200, 0, 0.8)',
+                    borderWidth: 2,
+                    flash: false,
+                });
+            }
         });
 
-        AppStateManager.setState({ searchMarkers: markers });
+        // Also maintain markers for backward compatibility
+        const textLayer = document.querySelector('.textLayer');
+        if (textLayer) {
+            const markers: SearchMarker[] = [];
+            resultsOnPage.forEach(result => {
+                const spans = textLayer.querySelectorAll('span');
+                spans.forEach(span => {
+                    const spanText = span.textContent?.toLowerCase() || '';
+                    if (spanText.includes(SearchService.currentQuery)) {
+                        const marker = document.createElement('div');
+                        marker.className = 'search-marker';
+                        marker.style.position = 'absolute';
+                        marker.style.backgroundColor = 'rgba(255, 255, 0, 0.4)';
+                        marker.style.border = '1px solid rgba(255, 200, 0, 0.8)';
+                        marker.style.pointerEvents = 'none';
+
+                        const rect = span.getBoundingClientRect();
+                        const layerRect = textLayer.getBoundingClientRect();
+
+                        marker.style.left = (rect.left - layerRect.left) + 'px';
+                        marker.style.top = (rect.top - layerRect.top) + 'px';
+                        marker.style.width = rect.width + 'px';
+                        marker.style.height = rect.height + 'px';
+
+                        textLayer.appendChild(marker);
+
+                        markers.push({
+                            element: marker,
+                            page: pageNum,
+                        });
+                    }
+                });
+            });
+            AppStateManager.setState({ searchMarkers: markers });
+        }
     },
 
     /**

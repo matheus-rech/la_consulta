@@ -1,4 +1,6 @@
 import AppStateManager from '../../src/state/AppStateManager';
+import LRUCache from '../../src/utils/LRUCache';
+import type { PageTextData } from '../../src/types';
 
 describe('AppStateManager', () => {
   beforeEach(() => {
@@ -16,11 +18,11 @@ describe('AppStateManager', () => {
       isProcessing: false,
       extractions: [],
       searchMarkers: [],
-      pdfTextCache: new Map(),
+      pdfTextCache: new LRUCache<number, PageTextData>(50),
       markdownContent: '',
       markdownLoaded: false,
       textChunks: [],
-      citationMap: new Map(),
+      citationMap: {},
       activeCitationIndex: null,
       extractedFigures: [],
       extractedTables: [],
@@ -37,13 +39,15 @@ describe('AppStateManager', () => {
       expect(state1.extractions).not.toBe(state2.extractions);
     });
 
-    it('should clone Map objects correctly', () => {
+    it('should clone LRUCache objects correctly', () => {
+      const cache = new LRUCache<number, PageTextData>(50);
+      cache.set(1, { fullText: 'test', items: [] });
       AppStateManager.setState({
-        pdfTextCache: new Map([[1, { text: 'test', page: 1 }]]),
+        pdfTextCache: cache,
       });
 
       const state = AppStateManager.getState();
-      expect(state.pdfTextCache.get(1)).toEqual({ text: 'test', page: 1 });
+      expect(state.pdfTextCache.get(1)).toEqual({ fullText: 'test', items: [] });
     });
   });
 

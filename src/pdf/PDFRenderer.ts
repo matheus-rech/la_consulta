@@ -16,6 +16,7 @@
 import AppStateManager from '../state/AppStateManager';
 import StatusManager from '../utils/status';
 import { addExtractionMarkersForPage, clearSearchMarkers } from '../utils/helpers';
+import AnnotationService from '../services/AnnotationService';
 import type { TextItem } from '../types';
 
 /**
@@ -258,6 +259,14 @@ export const PDFRenderer = {
             if (PDFRenderer.showBoundingBoxes) {
                 await PDFRenderer.renderBoundingBoxes(page, textItems, state.scale);
             }
+
+            // Initialize annotation layer and handlers
+            AnnotationService.initializeLayer(pageNum, pageDiv);
+            AnnotationService.renderAnnotations(pageNum);
+            
+            // Import annotation handlers
+            const { initializeAnnotationHandlers } = await import('../utils/annotationHandlers');
+            initializeAnnotationHandlers(pageDiv, pageNum);
 
         } catch (error) {
             console.error("PDF Render Error:", error);

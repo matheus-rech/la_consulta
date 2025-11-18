@@ -4,7 +4,7 @@
  */
 
 import type { Extraction, ValidationResult } from '../types';
-import { EXTRACTION_METHODS } from '../types';
+import { EXTRACTION_METHODS, type ExtractionMethod } from '../types';
 
 /**
  * Security utilities for sanitizing inputs, validating data, and encoding/decoding

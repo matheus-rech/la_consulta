@@ -25,6 +25,8 @@ import PDFRenderer from './PDFRenderer';
 import TextSelection from './TextSelection';
 import CitationService from '../services/CitationService';
 import TextStructureService from '../services/TextStructureService';
+import LRUCache from '../utils/LRUCache';
+import type { PageTextData } from '../types';
 
 /**
  * PDF.js library types
@@ -187,7 +189,7 @@ const PDFLoader = {
         totalPages: pdfDoc.numPages,
         documentName: sanitizedName,
         isProcessing: false,
-        pdfTextCache: new Map() // Clear cache on new load
+        pdfTextCache: new LRUCache<number, PageTextData>(50) // Clear cache on new load
       });
 
       console.log('📖 Extracting text chunks for semantic search and citations...');

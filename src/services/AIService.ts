@@ -24,6 +24,7 @@ import AppStateManager from '../state/AppStateManager';
 import ExtractionTracker from '../data/ExtractionTracker';
 import StatusManager from '../utils/status';
 import LRUCache from '../utils/LRUCache';
+import CircuitBreaker from '../utils/CircuitBreaker';
 import BackendClient from './BackendClient';
 import AuthManager from './AuthManager';
 
@@ -33,6 +34,20 @@ import AuthManager from './AuthManager';
  * LRU Cache for PDF text with 50-page limit
  */
 const pdfTextLRUCache = new LRUCache<number, { fullText: string, items: Array<any> }>(50);
+
+/**
+ * Circuit Breaker for AI service calls to prevent cascading failures
+ * Configuration:
+ * - Opens after 5 consecutive failures
+ * - Requires 2 successes to close from HALF_OPEN
+ * - 60 second timeout before retry attempt
+ */
+const aiCircuitBreaker = new CircuitBreaker({
+    failureThreshold: 5,
+    successThreshold: 2,
+    timeout: 60000, // 60 seconds
+    monitoringPeriod: 300000, // 5 minutes
+});
 
 /**
  * Ensure backend authentication before AI calls
@@ -156,8 +171,10 @@ async function generatePICO(): Promise<void> {
 
         const documentId = state.documentName || `temp-${Date.now()}`;
 
-        // Call backend API instead of direct Gemini
-        const response = await BackendClient.generatePICO(documentId, documentText);
+        // Call backend API through circuit breaker for fault tolerance
+        const response = await aiCircuitBreaker.execute(async () => {
+            return await BackendClient.generatePICO(documentId, documentText);
+        });
         const data = response; // Backend returns PICO fields directly
 
         // Populate fields
@@ -228,8 +245,10 @@ async function generateSummary(): Promise<void> {
 
         const documentId = state.documentName || `temp-${Date.now()}`;
 
-        // Call backend API instead of direct Gemini
-        const response = await BackendClient.generateSummary(documentId, documentText);
+        // Call backend API through circuit breaker for fault tolerance
+        const response = await aiCircuitBreaker.execute(async () => {
+            return await BackendClient.generateSummary(documentId, documentText);
+        });
         const summaryText = response.summary; // Backend returns {summary: string}
 
         const summaryField = document.getElementById('predictorsPoorOutcomeSurgical') as HTMLTextAreaElement;
@@ -300,8 +319,10 @@ async function validateFieldWithAI(fieldId: string): Promise<void> {
 
         const documentId = state.documentName || `temp-${Date.now()}`;
 
-        // Call backend API instead of direct Gemini
-        const response = await BackendClient.validateField(documentId, fieldId, claim, documentText);
+        // Call backend API through circuit breaker for fault tolerance
+        const response = await aiCircuitBreaker.execute(async () => {
+            return await BackendClient.validateField(documentId, fieldId, claim, documentText);
+        });
         const validation = response; // Backend returns {is_supported, quote, confidence}
 
         if (validation.is_supported) {
@@ -355,8 +376,10 @@ async function findMetadata(): Promise<void> {
 
         const documentId = state.documentName || `temp-${Date.now()}`;
 
-        // Call backend API instead of direct Gemini
-        const response = await BackendClient.findMetadata(documentId, documentText);
+        // Call backend API through circuit breaker for fault tolerance
+        const response = await aiCircuitBreaker.execute(async () => {
+            return await BackendClient.findMetadata(documentId, documentText);
+        });
         const data = response; // Backend returns {doi, pmid, journal, year}
 
         const doiField = document.getElementById('doi') as HTMLInputElement;
@@ -405,8 +428,10 @@ async function handleExtractTables(): Promise<void> {
 
         const documentId = state.documentName || `temp-${Date.now()}`;
 
-        // Call backend API instead of direct Gemini
-        const response = await BackendClient.extractTables(documentId, documentText);
+        // Call backend API through circuit breaker for fault tolerance
+        const response = await aiCircuitBreaker.execute(async () => {
+            return await BackendClient.extractTables(documentId, documentText);
+        });
         const result = response; // Backend returns {tables: [...]}
 
         if (result.tables && result.tables.length > 0 && resultsContainer) {
@@ -514,8 +539,10 @@ async function handleImageAnalysis(): Promise<void> {
         const state = AppStateManager.getState();
         const documentId = state.documentName || `temp-${Date.now()}`;
 
-        // Call backend API instead of direct Gemini
-        const response = await BackendClient.analyzeImage(documentId, base64Data, prompt);
+        // Call backend API through circuit breaker for fault tolerance
+        const response = await aiCircuitBreaker.execute(async () => {
+            return await BackendClient.analyzeImage(documentId, base64Data, prompt);
+        });
         const analysisText = response.analysis; // Backend returns {analysis: string}
 
         if (resultsContainer) resultsContainer.innerText = analysisText;
@@ -561,8 +588,10 @@ async function handleDeepAnalysis(): Promise<void> {
 
         const documentId = state.documentName || `temp-${Date.now()}`;
 
-        // Call backend API instead of direct Gemini
-        const response = await BackendClient.deepAnalysis(documentId, documentText, prompt);
+        // Call backend API through circuit breaker for fault tolerance
+        const response = await aiCircuitBreaker.execute(async () => {
+            return await BackendClient.deepAnalysis(documentId, documentText, prompt);
+        });
         const analysisText = response.analysis; // Backend returns {analysis: string}
 
         if (resultsContainer) resultsContainer.innerText = analysisText;

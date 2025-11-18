@@ -120,7 +120,7 @@ class TableExtractor {
      * Step 3: Detect column positions by clustering X coordinates
      * Items that align vertically (similar X positions) form columns
      */
-    private detectColumnPositions(row: TextItem[], tolerance = 10): number[] {
+    private detectColumnPositions(row: TextItem[], tolerance = 7): number[] {
         const positions = row.map(item => item.x)
 
         // Cluster nearby X positions
@@ -153,19 +153,31 @@ class TableExtractor {
         let currentTable: any = null
 
         rows.forEach((row, rowIndex) => {
+            // Filter single-word rows (unless it's clearly a header row)
+            const isSingleWordRow = row.length <= 2 && row.every(item => 
+                item.text.trim().split(/\s+/).length <= 2
+            )
+            
+            // Skip single-word rows unless they're part of an existing table
+            if (isSingleWordRow && !currentTable) {
+                return
+            }
+
             const columnPositions = this.detectColumnPositions(row)
 
             // Check if row is part of a table
-            const hasMultipleColumns = columnPositions.length >= 4
+            // Require at least 3 columns (was 4) but add content validation
+            const hasMultipleColumns = columnPositions.length >= 3
+            const hasValidContent = this.hasValidTableContent(row, columnPositions)
             const alignsWithTable = currentTable &&
                 this.alignsWithColumns(columnPositions, currentTable.columnPositions)
 
-            if (alignsWithTable) {
+            if (alignsWithTable && hasValidContent) {
                 // Continue existing table
                 currentTable.rows.push(row)
-            } else if (hasMultipleColumns) {
+            } else if (hasMultipleColumns && hasValidContent) {
                 // Start new table
-                if (currentTable && currentTable.rows.length >= 3) {
+                if (currentTable && this.isValidTable(currentTable)) {
                     tableRegions.push(currentTable)
                 }
                 currentTable = {
@@ -175,7 +187,7 @@ class TableExtractor {
                 }
             } else {
                 // Not a table row - end current table if exists
-                if (currentTable && currentTable.rows.length >= 3) {
+                if (currentTable && this.isValidTable(currentTable)) {
                     tableRegions.push(currentTable)
                 }
                 currentTable = null
@@ -183,7 +195,7 @@ class TableExtractor {
         })
 
         // Don't forget the last table
-        if (currentTable && currentTable.rows.length >= 3) {
+        if (currentTable && this.isValidTable(currentTable)) {
             tableRegions.push(currentTable)
         }
 
@@ -191,19 +203,60 @@ class TableExtractor {
     }
 
     /**
+     * Validate that a row has valid table content (not just single words)
+     */
+    private hasValidTableContent(row: TextItem[], columnPositions: number[]): boolean {
+        // Must have at least 2 columns
+        if (columnPositions.length < 2) {
+            return false
+        }
+
+        // Check for consistent cell patterns
+        // At least 50% of cells should have meaningful content (more than 2 chars)
+        const meaningfulCells = row.filter(item => item.text.trim().length > 2).length
+        const cellRatio = meaningfulCells / Math.max(row.length, 1)
+        
+        return cellRatio >= 0.5
+    }
+
+    /**
+     * Validate that a table region meets minimum requirements
+     * Requires at least 4 rows (was 3) and 2 columns of actual data
+     */
+    private isValidTable(table: any): boolean {
+        // Minimum 4 rows (was 3)
+        if (table.rows.length < 4) {
+            return false
+        }
+
+        // Must have at least 2 columns
+        if (table.columnPositions.length < 2) {
+            return false
+        }
+
+        // At least 3 rows should have valid content (excluding header)
+        const dataRows = table.rows.slice(1)
+        const validDataRows = dataRows.filter((row: TextItem[]) => 
+            this.hasValidTableContent(row, this.detectColumnPositions(row))
+        )
+
+        return validDataRows.length >= 3
+    }
+
+    /**
      * Check if column positions align with existing table columns
-     * At least 80% of positions must align within tolerance
+     * At least 70% of positions must align within stricter tolerance (7px)
      */
     private alignsWithColumns(
         positions: number[],
         tableColumns: number[],
-        tolerance = 15
+        tolerance = 7
     ): boolean {
         const aligned = positions.filter(pos =>
             tableColumns.some(col => Math.abs(pos - col) < tolerance)
         )
 
-        return aligned.length >= positions.length * 0.8
+        return aligned.length >= positions.length * 0.7
     }
 
     /**

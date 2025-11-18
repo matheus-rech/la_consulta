@@ -18,6 +18,8 @@ import type { Section, Paragraph } from '../services/TextStructureService';
 import type { ExtractedFigure } from '../services/FigureExtractor';
 import type { ExtractedTable } from '../services/TableExtractor';
 import type { EnhancedFigure, EnhancedTable } from '../services/AgentOrchestrator';
+// Import LRU Cache type
+import type LRUCache from '../utils/LRUCache';
 
 // ==================== EXTRACTION TYPES ====================
 
@@ -161,8 +163,8 @@ export interface AppState {
   markdownContent: string;
   /** Whether markdown content has been loaded */
   markdownLoaded: boolean;
-  /** Cache of extracted text per page (page number -> text) */
-  pdfTextCache: Map<number, PageTextData>;
+  /** Cache of extracted text per page (page number -> text) - Uses LRU eviction */
+  pdfTextCache: LRUCache<number, PageTextData>;
   /** Active search result markers on the PDF */
   searchMarkers: SearchMarker[];
   /** Maximum size of the text cache */
