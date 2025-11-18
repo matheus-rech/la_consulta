@@ -3,14 +3,14 @@
 ## Screenshot Locations
 
 ### Playwright Screenshots (Latest)
-Located in: `/Users/matheusrech/untitled folder 4/a_consulta/.playwright-mcp/`
+Located in: `<project-root>/.playwright-mcp/`
 
 1. **clinical-extractor-working.png** - Initial app state (all buttons working)
 2. **pdf-loaded-with-tables.png** - PDF successfully loaded (Kim2016.pdf, 9 pages)
 3. **tables-extracted.png** - After table extraction (10 tables detected)
 
 ### Project Screenshots
-Located in: `/Users/matheusrech/.cursor/worktrees/a_consulta/DdSIg/`
+Located in: `<project-root>/`
 
 - `initial-state.png` - Initial app state
 - `after-pdf-load.png` - After PDF load
@@ -55,10 +55,10 @@ Located in: `/Users/matheusrech/.cursor/worktrees/a_consulta/DdSIg/`
 
 ```bash
 # View in project directory
-cd /Users/matheusrech/.cursor/worktrees/a_consulta/DdSIg
+cd <path-to-project>
 open *.png
 
 # Or view Playwright screenshots
-open "/Users/matheusrech/untitled folder 4/a_consulta/.playwright-mcp/"*.png
+open "<path-to-project>/.playwright-mcp/"*.png
 ```
 

@@ -12,7 +12,7 @@ This application **MUST** be run through Vite's development server. It cannot ru
 
 ### Option 1: Development Mode (Recommended)
 ```bash
-cd /Users/matheusrech/.cursor/worktrees/a_consulta/DdSIg
+cd <path-to-project>
 npm run dev
 ```
 
