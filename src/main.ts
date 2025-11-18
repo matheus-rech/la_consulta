@@ -102,6 +102,12 @@ function setupDependencies() {
         statusManager: StatusManager,
         dynamicFields: DynamicFields
     });
+
+    // CitationService needs access to canvas and scale
+    CitationService.setDependencies({
+        getCanvas: () => PDFRenderer.currentCanvas,
+        getScale: () => AppStateManager.getState().scale || 1.0
+    });
 }
 
 // ==================== PDF.JS CONFIGURATION ====================
