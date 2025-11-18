@@ -227,7 +227,6 @@ class TableExtractor {
                 // Start new table
                 // TIGHTENED: Require at least 3 rows (was 2)
                 if (currentTable && currentTable.rows.length >= 3) {
-                    // Additional validation: check table size
                 // End previous table if it meets criteria
                 if (currentTable) {
                     this.computeTableProperties(currentTable)
