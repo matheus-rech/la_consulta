@@ -549,9 +549,10 @@ export const jumpToCitation = (
     }
 
     return renderPageCallback(citation.pageNum).then(() => {
-        setTimeout(() => {
+        // Wait for the next paint cycle to ensure the page is rendered
+        requestAnimationFrame(() => {
             highlightCitation(citationIndex, citationMap);
-        }, 500);
+        });
     });
 };
 
