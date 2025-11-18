@@ -19,14 +19,13 @@ import type { Section, Paragraph } from '../services/TextStructureService';
 
 /**
  * Coordinates defining a bounding box for extracted text on a PDF page.
+ * Uses x/y for position to maintain consistency across the codebase.
  */
 export interface Coordinates {
-  /** Left/X position in PDF coordinates */
-  left?: number;
-  x?: number;
-  /** Top/Y position in PDF coordinates */
-  top?: number;
-  y?: number;
+  /** X position in PDF coordinates */
+  x: number;
+  /** Y position in PDF coordinates */
+  y: number;
   /** Width of the bounding box */
   width: number;
   /** Height of the bounding box */
