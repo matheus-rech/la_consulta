@@ -36,6 +36,18 @@ interface ExtractedTable {
     extractionMethod: string
 }
 
+interface TableRegion {
+    startRow: number
+    rows: TextItem[][]
+    columnPositions: number[]
+    // Pre-computed properties for validation (performance optimization)
+    boundingBox?: BoundingBox
+    columnCounts?: number[]
+    rowHeights?: number[]
+    avgRowHeight?: number
+    maxHeightVariation?: number
+}
+
 class TableExtractor {
     /**
      * Extract all tables from a PDF page using geometric detection
@@ -145,6 +157,43 @@ class TableExtractor {
     }
 
     /**
+     * Pre-compute validation properties for a table region
+     * This avoids recalculating the same properties multiple times in isValidTable
+     */
+    private computeTableProperties(tableRegion: TableRegion): void {
+        const allItems = tableRegion.rows.flat()
+        
+        // Compute bounding box
+        const xs = allItems.map((i: TextItem) => i.x)
+        const ys = allItems.map((i: TextItem) => i.y)
+        const rights = allItems.map((i: TextItem) => i.x + i.width)
+        const bottoms = allItems.map((i: TextItem) => i.y + i.height)
+        
+        tableRegion.boundingBox = {
+            x: Math.min(...xs),
+            y: Math.min(...ys),
+            width: Math.max(...rights) - Math.min(...xs),
+            height: Math.max(...bottoms) - Math.min(...ys),
+        }
+        
+        // Compute row heights and statistics
+        tableRegion.rowHeights = tableRegion.rows.map((row: TextItem[]) => {
+            const rowYs = row.map((i: TextItem) => i.y)
+            const rowBottoms = row.map((i: TextItem) => i.y + i.height)
+            return Math.max(...rowBottoms) - Math.min(...rowYs)
+        })
+        
+        tableRegion.avgRowHeight = tableRegion.rowHeights.reduce((a: number, b: number) => a + b, 0) / tableRegion.rowHeights.length
+        tableRegion.maxHeightVariation = Math.max(...tableRegion.rowHeights) / tableRegion.avgRowHeight
+        
+        // Compute column counts per row
+        tableRegion.columnCounts = tableRegion.rows.map((row: TextItem[]) => {
+            const positions = this.detectColumnPositions(row)
+            return positions.length
+        })
+    }
+
+    /**
      * Step 4: Find table regions by detecting grid patterns
      * A table is: multiple consecutive rows with aligned columns
      * 
@@ -156,9 +205,9 @@ class TableExtractor {
      * - Minimum table height: 50px (new)
      * - Maximum row height variation: 50% (new)
      */
-    private detectTableRegions(rows: TextItem[][]): any[] {
-        const tableRegions: any[] = []
-        let currentTable: any = null
+    private detectTableRegions(rows: TextItem[][]): TableRegion[] {
+        const tableRegions: TableRegion[] = []
+        let currentTable: TableRegion | null = null
 
         rows.forEach((row, rowIndex) => {
             const columnPositions = this.detectColumnPositions(row)
@@ -175,8 +224,11 @@ class TableExtractor {
                 currentTable.rows.push(row)
             } else if (hasMultipleColumns) {
                 // End previous table if it meets criteria
-                if (currentTable && this.isValidTable(currentTable)) {
-                    tableRegions.push(currentTable)
+                if (currentTable) {
+                    this.computeTableProperties(currentTable)
+                    if (this.isValidTable(currentTable)) {
+                        tableRegions.push(currentTable)
+                    }
                 }
                 // Start new table
                 currentTable = {
@@ -186,16 +238,22 @@ class TableExtractor {
                 }
             } else {
                 // Not a table row - end current table if it meets criteria
-                if (currentTable && this.isValidTable(currentTable)) {
-                    tableRegions.push(currentTable)
+                if (currentTable) {
+                    this.computeTableProperties(currentTable)
+                    if (this.isValidTable(currentTable)) {
+                        tableRegions.push(currentTable)
+                    }
                 }
                 currentTable = null
             }
         })
 
         // Don't forget the last table
-        if (currentTable && this.isValidTable(currentTable)) {
-            tableRegions.push(currentTable)
+        if (currentTable) {
+            this.computeTableProperties(currentTable)
+            if (this.isValidTable(currentTable)) {
+                tableRegions.push(currentTable)
+            }
         }
 
         return tableRegions
@@ -204,8 +262,10 @@ class TableExtractor {
     /**
      * Validate if a detected table region meets quality criteria
      * Filters out false positives like headers, lists, or misaligned text
+     * 
+     * Properties are pre-computed in computeTableProperties() for performance
      */
-    private isValidTable(tableRegion: any): boolean {
+    private isValidTable(tableRegion: TableRegion): boolean {
         // TIGHTENED: Minimum 3 rows (was 2)
         if (tableRegion.rows.length < 3) {
             return false
@@ -216,49 +276,33 @@ class TableExtractor {
             return false
         }
 
-        // NEW: Calculate bounding box
-        const allItems = tableRegion.rows.flat()
-        const xs = allItems.map((i: TextItem) => i.x)
-        const ys = allItems.map((i: TextItem) => i.y)
-        const rights = allItems.map((i: TextItem) => i.x + i.width)
-        const bottoms = allItems.map((i: TextItem) => i.y + i.height)
-
-        const minX = Math.min(...xs)
-        const maxX = Math.max(...rights)
-        const minY = Math.min(...ys)
-        const maxY = Math.max(...bottoms)
-
-        const width = maxX - minX
-        const height = maxY - minY
+        // Use pre-computed bounding box (no recalculation needed)
+        if (!tableRegion.boundingBox) {
+            return false  // Should never happen if computeTableProperties was called
+        }
 
         // NEW: Minimum table dimensions (filter tiny "tables")
-        if (width < 200 || height < 50) {
+        if (tableRegion.boundingBox.width < 200 || tableRegion.boundingBox.height < 50) {
             return false
         }
 
-        // NEW: Check row height consistency (tables have consistent row heights)
-        const rowHeights = tableRegion.rows.map((row: TextItem[]) => {
-            const rowYs = row.map((i: TextItem) => i.y)
-            const rowBottoms = row.map((i: TextItem) => i.y + i.height)
-            return Math.max(...rowBottoms) - Math.min(...rowYs)
-        })
-
-        const avgRowHeight = rowHeights.reduce((a: number, b: number) => a + b, 0) / rowHeights.length
-        const maxHeightVariation = Math.max(...rowHeights) / avgRowHeight
+        // Use pre-computed row height variation (no recalculation needed)
+        if (!tableRegion.maxHeightVariation) {
+            return false  // Should never happen if computeTableProperties was called
+        }
 
         // NEW: Reject if row heights vary too much (>50% variation suggests not a table)
-        if (maxHeightVariation > 1.5) {
+        if (tableRegion.maxHeightVariation > 1.5) {
             return false
         }
 
-        // NEW: Check that rows have similar number of columns (tables are regular)
-        const columnCounts = tableRegion.rows.map((row: TextItem[]) => {
-            const positions = this.detectColumnPositions(row)
-            return positions.length
-        })
+        // Use pre-computed column counts (no recalculation needed)
+        if (!tableRegion.columnCounts) {
+            return false  // Should never happen if computeTableProperties was called
+        }
 
-        const avgColumns = columnCounts.reduce((a: number, b: number) => a + b, 0) / columnCounts.length
-        const consistentColumns = columnCounts.every((count: number) => 
+        const avgColumns = tableRegion.columnCounts.reduce((a: number, b: number) => a + b, 0) / tableRegion.columnCounts.length
+        const consistentColumns = tableRegion.columnCounts.every((count: number) => 
             Math.abs(count - avgColumns) <= 1  // Allow ±1 column variation
         )
 
@@ -289,7 +333,7 @@ class TableExtractor {
     /**
      * Step 5: Convert table region to structured grid format
      */
-    private convertToStructuredTable(tableRegion: any): Omit<ExtractedTable, 'id' | 'pageNum' | 'extractionMethod'> {
+    private convertToStructuredTable(tableRegion: TableRegion): Omit<ExtractedTable, 'id' | 'pageNum' | 'extractionMethod'> {
         const rows = tableRegion.rows
         const columnPositions = tableRegion.columnPositions
 
