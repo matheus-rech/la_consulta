@@ -49,6 +49,7 @@ import SemanticSearchService from './services/SemanticSearchService';
 import AnnotationService from './services/AnnotationService';
 import BackendProxyService from './services/BackendProxyService';
 import SamplePDFService from './services/SamplePDFService';
+import CitationService, { jumpToCitation } from './services/CitationService';
 import LRUCache from './utils/LRUCache';
 import CircuitBreaker from './utils/CircuitBreaker';
 import {
@@ -101,6 +102,12 @@ function setupDependencies() {
         appStateManager: AppStateManager,
         statusManager: StatusManager,
         dynamicFields: DynamicFields
+    });
+
+    // CitationService needs access to canvas and scale
+    CitationService.setDependencies({
+        getCanvas: () => PDFRenderer.currentCanvas,
+        getScale: () => AppStateManager.getState().scale || 1.0
     });
 }
 
@@ -773,6 +780,25 @@ async function jumpToPage(pageNum: number) {
 }
 
 /**
+ * Highlight a citation on the PDF
+ */
+async function highlightCitationOnPDF(citationIndex: number) {
+    const state = AppStateManager.getState();
+    if (!state.pdfDoc || !state.citationMap) {
+        StatusManager.show('No PDF loaded or citation map not available', 'warning');
+        return;
+    }
+
+    await jumpToCitation(
+        citationIndex,
+        state.citationMap,
+        async (pageNum: number) => {
+            await PDFRenderer.renderPage(pageNum, TextSelection);
+        }
+    );
+}
+
+/**
  * Toggle annotation tools panel
  */
 function toggleAnnotationTools() {
@@ -926,6 +952,10 @@ function exposeWindowAPI() {
         ExtractionTracker,
         FormManager,
         StatusManager,
+
+        // Citation functions
+        CitationService,
+        highlightCitation: highlightCitationOnPDF,
 
         triggerCrashStateSave,
         triggerManualRecovery

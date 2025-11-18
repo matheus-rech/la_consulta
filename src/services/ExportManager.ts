@@ -16,21 +16,60 @@ import type { TextChunk, Citation } from './CitationService';
  */
 const ExportManager = {
     /**
-     * Export extraction data as JSON
-     * Includes document metadata, form data, and all extractions
+     * Export extraction data as JSON with full provenance metadata
+     * Includes document metadata, form data, all extractions with coordinates,
+     * citation map, text chunks, and bounding box data
      */
     exportJSON: function() {
         const state = AppStateManager.getState();
         const formData = FormManager.collectFormData();
+        const extractions = ExtractionTracker.getExtractions();
+        
+        // Enhanced data structure with provenance
         const data = {
+            version: '2.0',
             document: state.documentName,
             exportDate: new Date().toISOString(),
+            totalPages: state.totalPages,
             formData,
-            extractions: ExtractionTracker.getExtractions()
+            extractions: extractions.map(ext => ({
+                ...ext,
+                // Ensure coordinates are included
+                coordinates: {
+                    x: ext.coordinates?.x ?? 0,
+                    y: ext.coordinates?.y ?? 0,
+                    width: ext.coordinates?.width ?? 0,
+                    height: ext.coordinates?.height ?? 0
+                },
+                // Add provenance metadata
+                provenance: {
+                    method: ext.method,
+                    timestamp: ext.timestamp,
+                    page: ext.page,
+                    hasCoordinates: ext.coordinates?.x != null
+                }
+            })),
+            // Include citation map if available
+            citationMap: state.citationMap || {},
+            // Include text chunks for citation lookup
+            textChunks: state.textChunks?.map(chunk => ({
+                index: chunk.index,
+                text: chunk.text.substring(0, 200), // Truncate for export
+                pageNum: chunk.pageNum,
+                bbox: chunk.bbox
+            })) || [],
+            // Include extracted figures and tables metadata
+            metadata: {
+                extractedFigures: state.extractedFigures?.length || 0,
+                extractedTables: state.extractedTables?.length || 0,
+                extractionCount: extractions.length,
+                uniqueFields: new Set(extractions.map(e => e.fieldName)).size
+            }
         };
+        
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         this.downloadFile(blob, `extraction_${Date.now()}.json`);
-        StatusManager.show('JSON export successful (Preview)', 'success');
+        StatusManager.show('JSON export successful with provenance metadata', 'success');
     },
 
     /**
@@ -113,8 +152,8 @@ const ExportManager = {
                 ext.text,
                 ext.page,
                 ext.method,
-                ext.coordinates.x || ext.coordinates.left || 0,
-                ext.coordinates.y || ext.coordinates.top || 0,
+                ext.coordinates.x,
+                ext.coordinates.y,
                 ext.coordinates.width,
                 ext.coordinates.height,
                 new Date(ext.timestamp).toLocaleString()
@@ -193,8 +232,8 @@ const ExportManager = {
                 method: ext.method,
                 timestamp: ext.timestamp,
                 coordinates: {
-                    x: ext.coordinates.x || ext.coordinates.left || 0,
-                    y: ext.coordinates.y || ext.coordinates.top || 0,
+                    x: ext.coordinates.x,
+                    y: ext.coordinates.y,
                     width: ext.coordinates.width,
                     height: ext.coordinates.height,
                 },
