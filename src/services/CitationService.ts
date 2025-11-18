@@ -22,6 +22,30 @@
 
 import type { PDFDocumentProxy, PDFPageProxy } from '../pdf/PDFLoader';
 
+// ==================== DEPENDENCY INJECTION ====================
+
+/**
+ * Dependencies for CitationService
+ * Injected to avoid circular dependencies and accessing global window object
+ */
+interface Dependencies {
+    getCanvas: () => HTMLCanvasElement | null;
+    getScale: () => number;
+}
+
+/**
+ * Internal dependencies storage
+ */
+let dependencies: Dependencies | null = null;
+
+/**
+ * Set dependencies for CitationService
+ * Should be called during app initialization
+ */
+export const setDependencies = (deps: Dependencies): void => {
+    dependencies = deps;
+};
+
 // ==================== TYPE DEFINITIONS ====================
 
 /**
@@ -472,21 +496,18 @@ export const highlightCitation = (
 
 /**
  * Draw citation highlight on canvas
- * Uses PDFRenderer's currentCanvas if available
+ * Uses injected dependencies to get canvas and scale
  * @private
  */
 const drawCitationHighlight = (citation: Citation): void => {
-    // Try to get canvas from PDFRenderer (imported dynamically to avoid circular deps)
-    let canvas: HTMLCanvasElement | null = null;
-    
-    // Check if PDFRenderer is available globally
-    if (typeof window !== 'undefined' && (window as any).ClinicalExtractor?.PDFRenderer?.currentCanvas) {
-        canvas = (window as any).ClinicalExtractor.PDFRenderer.currentCanvas;
-    } else {
-        // Fallback: find canvas in DOM
-        canvas = document.querySelector('canvas');
+    // Check if dependencies are injected
+    if (!dependencies) {
+        console.warn('Dependencies not injected. Call setDependencies() first.');
+        return;
     }
     
+    // Get canvas from injected dependency
+    const canvas = dependencies.getCanvas();
     if (!canvas) {
         console.warn('No canvas found for citation highlighting');
         return;
@@ -495,12 +516,8 @@ const drawCitationHighlight = (citation: Citation): void => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Get current scale from AppStateManager if available
-    let scale = 1.0;
-    if (typeof window !== 'undefined' && (window as any).ClinicalExtractor?.AppStateManager) {
-        const state = (window as any).ClinicalExtractor.AppStateManager.getState();
-        scale = state.scale || 1.0;
-    }
+    // Get current scale from injected dependency
+    const scale = dependencies.getScale();
 
     // Draw highlight overlay
     ctx.save();
@@ -558,6 +575,7 @@ export const jumpToCitation = (
 // ==================== EXPORT ALL ====================
 
 export default {
+    setDependencies,
     extractAllTextChunks,
     buildCitationMap,
     getCitation,
