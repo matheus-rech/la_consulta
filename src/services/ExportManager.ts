@@ -35,17 +35,17 @@ const ExportManager = {
                 ...ext,
                 // Ensure coordinates are included
                 coordinates: {
-                    x: ext.coordinates?.x || ext.coordinates?.left || 0,
-                    y: ext.coordinates?.y || ext.coordinates?.top || 0,
-                    width: ext.coordinates?.width || 0,
-                    height: ext.coordinates?.height || 0
+                    x: ext.coordinates?.x ?? ext.coordinates?.left ?? 0,
+                    y: ext.coordinates?.y ?? ext.coordinates?.top ?? 0,
+                    width: ext.coordinates?.width ?? 0,
+                    height: ext.coordinates?.height ?? 0
                 },
                 // Add provenance metadata
                 provenance: {
                     method: ext.method,
                     timestamp: ext.timestamp,
                     page: ext.page,
-                    hasCoordinates: !!(ext.coordinates?.x || ext.coordinates?.left)
+                    hasCoordinates: ext.coordinates?.x != null || ext.coordinates?.left != null
                 }
             })),
             // Include citation map if available
