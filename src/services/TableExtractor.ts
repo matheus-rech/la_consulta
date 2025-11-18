@@ -147,6 +147,14 @@ class TableExtractor {
     /**
      * Step 4: Find table regions by detecting grid patterns
      * A table is: multiple consecutive rows with aligned columns
+     * 
+     * TIGHTENED CRITERIA to reduce false positives:
+     * - Minimum 3 columns (was 3, unchanged)
+     * - Minimum 3 rows (was 2, increased)
+     * - Minimum 70% column alignment (was 70%, unchanged)
+     * - Minimum table width: 200px (new)
+     * - Minimum table height: 50px (new)
+     * - Maximum row height variation: 50% (new)
      */
     private detectTableRegions(rows: TextItem[][]): any[] {
         const tableRegions: any[] = []
@@ -155,27 +163,30 @@ class TableExtractor {
         rows.forEach((row, rowIndex) => {
             const columnPositions = this.detectColumnPositions(row)
 
-            // Check if row is part of a table
+            // TIGHTENED: Require at least 3 columns
             const hasMultipleColumns = columnPositions.length >= 3
+            
+            // TIGHTENED: Require better alignment (80% instead of 70%)
             const alignsWithTable = currentTable &&
-                this.alignsWithColumns(columnPositions, currentTable.columnPositions)
+                this.alignsWithColumns(columnPositions, currentTable.columnPositions, 10, 0.8)
 
             if (alignsWithTable) {
                 // Continue existing table
                 currentTable.rows.push(row)
             } else if (hasMultipleColumns) {
-                // Start new table
-                if (currentTable && currentTable.rows.length >= 2) {
+                // End previous table if it meets criteria
+                if (currentTable && this.isValidTable(currentTable)) {
                     tableRegions.push(currentTable)
                 }
+                // Start new table
                 currentTable = {
                     startRow: rowIndex,
                     rows: [row],
                     columnPositions: columnPositions,
                 }
             } else {
-                // Not a table row - end current table if exists
-                if (currentTable && currentTable.rows.length >= 2) {
+                // Not a table row - end current table if it meets criteria
+                if (currentTable && this.isValidTable(currentTable)) {
                     tableRegions.push(currentTable)
                 }
                 currentTable = null
@@ -183,7 +194,7 @@ class TableExtractor {
         })
 
         // Don't forget the last table
-        if (currentTable && currentTable.rows.length >= 2) {
+        if (currentTable && this.isValidTable(currentTable)) {
             tableRegions.push(currentTable)
         }
 
@@ -191,19 +202,88 @@ class TableExtractor {
     }
 
     /**
+     * Validate if a detected table region meets quality criteria
+     * Filters out false positives like headers, lists, or misaligned text
+     */
+    private isValidTable(tableRegion: any): boolean {
+        // TIGHTENED: Minimum 3 rows (was 2)
+        if (tableRegion.rows.length < 3) {
+            return false
+        }
+
+        // TIGHTENED: Minimum 3 columns
+        if (tableRegion.columnPositions.length < 3) {
+            return false
+        }
+
+        // NEW: Calculate bounding box
+        const allItems = tableRegion.rows.flat()
+        const xs = allItems.map((i: TextItem) => i.x)
+        const ys = allItems.map((i: TextItem) => i.y)
+        const rights = allItems.map((i: TextItem) => i.x + i.width)
+        const bottoms = allItems.map((i: TextItem) => i.y + i.height)
+
+        const minX = Math.min(...xs)
+        const maxX = Math.max(...rights)
+        const minY = Math.min(...ys)
+        const maxY = Math.max(...bottoms)
+
+        const width = maxX - minX
+        const height = maxY - minY
+
+        // NEW: Minimum table dimensions (filter tiny "tables")
+        if (width < 200 || height < 50) {
+            return false
+        }
+
+        // NEW: Check row height consistency (tables have consistent row heights)
+        const rowHeights = tableRegion.rows.map((row: TextItem[]) => {
+            const rowYs = row.map((i: TextItem) => i.y)
+            const rowBottoms = row.map((i: TextItem) => i.y + i.height)
+            return Math.max(...rowBottoms) - Math.min(...rowYs)
+        })
+
+        const avgRowHeight = rowHeights.reduce((a: number, b: number) => a + b, 0) / rowHeights.length
+        const maxHeightVariation = Math.max(...rowHeights) / avgRowHeight
+
+        // NEW: Reject if row heights vary too much (>50% variation suggests not a table)
+        if (maxHeightVariation > 1.5) {
+            return false
+        }
+
+        // NEW: Check that rows have similar number of columns (tables are regular)
+        const columnCounts = tableRegion.rows.map((row: TextItem[]) => {
+            const positions = this.detectColumnPositions(row)
+            return positions.length
+        })
+
+        const avgColumns = columnCounts.reduce((a: number, b: number) => a + b, 0) / columnCounts.length
+        const consistentColumns = columnCounts.every((count: number) => 
+            Math.abs(count - avgColumns) <= 1  // Allow ±1 column variation
+        )
+
+        if (!consistentColumns) {
+            return false
+        }
+
+        return true
+    }
+
+    /**
      * Check if column positions align with existing table columns
-     * At least 70% of positions must align within tolerance
+     * At least threshold% of positions must align within tolerance
      */
     private alignsWithColumns(
         positions: number[],
         tableColumns: number[],
-        tolerance = 15
+        tolerance = 10,  // TIGHTENED: Reduced from 15 to 10
+        threshold = 0.8  // TIGHTENED: Increased from 0.7 to 0.8
     ): boolean {
         const aligned = positions.filter(pos =>
             tableColumns.some(col => Math.abs(pos - col) < tolerance)
         )
 
-        return aligned.length >= positions.length * 0.7
+        return aligned.length >= positions.length * threshold
     }
 
     /**

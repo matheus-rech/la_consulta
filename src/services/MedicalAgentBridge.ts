@@ -12,6 +12,52 @@ import type { AgentResult } from './AgentOrchestrator';
 import BackendClient from './BackendClient';
 import AuthManager from './AuthManager';
 
+// Import Gemini SDK for fallback
+let geminiModel: any = null;
+
+/**
+ * Initialize Gemini model for fallback when backend is unavailable
+ * Called lazily when needed, or after Google API loads
+ */
+function initializeGeminiFallback() {
+    try {
+        // Check if Google GenAI SDK is available
+        if (typeof window !== 'undefined' && (window as any).google && (window as any).google.genai) {
+            const { GoogleGenerativeAI } = (window as any).google.genai;
+            const apiKey = import.meta.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
+            if (apiKey) {
+                const genAI = new GoogleGenerativeAI(apiKey);
+                geminiModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-thinking-exp-1219' });
+                console.log('✅ Gemini fallback initialized');
+                return true;
+            } else {
+                console.warn('⚠️ GEMINI_API_KEY not found - backend fallback will not work');
+                return false;
+            }
+        } else {
+            // Google API not loaded yet - will retry when needed
+            return false;
+        }
+    } catch (error) {
+        console.warn('⚠️ Gemini SDK not available for fallback:', error);
+        return false;
+    }
+}
+
+// Try to initialize immediately if possible
+let initializationAttempted = false;
+function ensureGeminiInitialized() {
+    if (!geminiModel && !initializationAttempted) {
+        initializationAttempted = true;
+        initializeGeminiFallback();
+    }
+    // Retry if still not initialized (Google API might load later)
+    if (!geminiModel && typeof window !== 'undefined' && (window as any).google) {
+        initializeGeminiFallback();
+    }
+    return geminiModel !== null;
+}
+
 // ==================== AGENT PROMPT TEMPLATES ====================
 
 const AGENT_PROMPTS = {
@@ -102,6 +148,7 @@ class MedicalAgentBridge {
 
     /**
      * Call a medical agent with specialized prompt
+     * Falls back to Gemini if backend is unavailable
      */
     async callAgent(
         agentName: keyof typeof AGENT_PROMPTS,
@@ -115,7 +162,24 @@ class MedicalAgentBridge {
             // Build agent-specific prompt
             const prompt = this.buildAgentPrompt(agentName, data, dataType);
 
-            const response = await this.callBackendAgent(prompt, agentName, documentId);
+            let response: string;
+
+            // Try backend first (if available and authenticated)
+            const backendAvailable = await BackendClient.healthCheck().catch(() => false);
+            const backendAuthenticated = BackendClient.isAuthenticated();
+
+            if (backendAvailable && backendAuthenticated) {
+                try {
+                    response = await this.callBackendAgent(prompt, agentName, documentId);
+                } catch (backendError: any) {
+                    // Backend failed, try Gemini fallback
+                    console.warn(`Backend agent failed for ${agentName}, using Gemini fallback:`, backendError.message);
+                    response = await this.callGeminiAgent(prompt);
+                }
+            } else {
+                // Backend not available, use Gemini directly
+                response = await this.callGeminiAgent(prompt);
+            }
 
             // Parse response
             const parsedData = this.parseAgentResponse(response, agentName);
@@ -203,12 +267,37 @@ Respond with JSON:
      * Routes through secure backend API instead of direct Gemini calls
      */
     private async callBackendAgent(prompt: string, agentName: string, documentId?: string): Promise<string> {
-        await AuthManager.ensureAuthenticated();
+        const authenticated = await AuthManager.ensureAuthenticated();
+        if (!authenticated) {
+            throw new Error('Backend authentication failed');
+        }
 
         const docId = documentId || `temp-agent-${Date.now()}`;
         const response = await BackendClient.deepAnalysis(docId, '', prompt);
         
         return response.analysis;
+    }
+
+    /**
+     * Call Gemini directly as fallback when backend is unavailable
+     */
+    private async callGeminiAgent(prompt: string): Promise<string> {
+        // Try to initialize Gemini if not already done
+        if (!geminiModel) {
+            ensureGeminiInitialized();
+        }
+
+        if (!geminiModel) {
+            throw new Error('Gemini SDK not available. Please set GEMINI_API_KEY environment variable and ensure Google GenAI SDK is loaded.');
+        }
+
+        try {
+            const result = await geminiModel.generateContent(prompt);
+            const response = await result.response;
+            return response.text();
+        } catch (error: any) {
+            throw new Error(`Gemini API error: ${error.message}`);
+        }
     }
 
     /**
