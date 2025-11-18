@@ -151,7 +151,7 @@ class TableExtractor {
      * TIGHTENED CRITERIA to reduce false positives:
      * - Minimum 3 columns (was 3, unchanged)
      * - Minimum 3 rows (was 2, increased)
-     * - Minimum 70% column alignment (was 70%, unchanged)
+     * - Minimum 80% column alignment (was 70%, increased)
      * - Minimum table width: 200px (new)
      * - Minimum table height: 50px (new)
      * - Maximum row height variation: 50% (new)
