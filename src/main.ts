@@ -49,6 +49,7 @@ import SemanticSearchService from './services/SemanticSearchService';
 import AnnotationService from './services/AnnotationService';
 import BackendProxyService from './services/BackendProxyService';
 import SamplePDFService from './services/SamplePDFService';
+import CitationService, { highlightCitation, jumpToCitation } from './services/CitationService';
 import LRUCache from './utils/LRUCache';
 import CircuitBreaker from './utils/CircuitBreaker';
 import {
@@ -720,7 +721,26 @@ async function jumpToPage(pageNum: number) {
         return;
     }
     
-    await PDFRenderer.renderPage(state.pdfDoc, pageNum);
+    await PDFRenderer.renderPage(pageNum, TextSelection);
+}
+
+/**
+ * Highlight a citation on the PDF
+ */
+async function highlightCitationOnPDF(citationIndex: number) {
+    const state = AppStateManager.getState();
+    if (!state.pdfDoc || !state.citationMap) {
+        StatusManager.show('No PDF loaded or citation map not available', 'warning');
+        return;
+    }
+
+    await jumpToCitation(
+        citationIndex,
+        state.citationMap,
+        async (pageNum: number) => {
+            await PDFRenderer.renderPage(pageNum, TextSelection);
+        }
+    );
 }
 
 /**
@@ -846,6 +866,11 @@ function exposeWindowAPI() {
         toggleAnnotationTools,
         setAnnotationTool,
         configureBackendProxy,
+
+        // Citation functions
+        CitationService,
+        highlightCitation: highlightCitationOnPDF,
+        jumpToCitation,
 
         triggerCrashStateSave,
         triggerManualRecovery

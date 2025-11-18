@@ -219,10 +219,16 @@ export const SemanticSearchService = {
             }
         }
 
-        const searchTerms = semanticExpansion ? expandQuery(query) : [query];
+        // When semantic expansion is disabled, only search for the exact query
+        // When enabled, include synonyms and related terms
+        const searchTerms = semanticExpansion ? expandQuery(query) : [query.toLowerCase()];
+        const originalQuery = query.toLowerCase();
 
         const results: SemanticSearchResult[] = [];
         const allTexts = textChunks.map(c => c.text);
+        
+        // Build inverted index once for efficiency
+        const invertedIndex = buildInvertedIndex(allTexts);
 
         for (const chunk of textChunks) {
             if (!includeHeadings && chunk.isHeading) {
@@ -236,13 +242,20 @@ export const SemanticSearchService = {
             for (const term of searchTerms) {
                 const exactMatches = findMatches(chunk.text, term);
                 if (exactMatches.length > 0) {
-                    const tfidfScore = calculateTFIDF(term, chunk.text, allTexts);
+                    const tfidfScore = calculateTFIDF(term, chunk.text, allTexts, invertedIndex);
                     const score = tfidfScore * 10 + exactMatches.length * 2;
+                    
+                    // Determine match type: exact if it's the original query, semantic if expanded term
+                    const isExactMatch = term.toLowerCase() === originalQuery;
+                    const matchType: 'exact' | 'semantic' = isExactMatch ? 'exact' : 'semantic';
                     
                     if (score > bestScore) {
                         bestScore = score;
-                        bestMatchType = term === query ? 'exact' : 'semantic';
+                        bestMatchType = matchType;
                         bestMatches = exactMatches;
+                    } else if (score === bestScore && isExactMatch && bestMatchType === 'semantic') {
+                        // Prefer exact matches when scores are equal
+                        bestMatchType = 'exact';
                     }
                 }
 
