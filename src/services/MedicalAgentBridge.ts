@@ -12,18 +12,93 @@ import type { AgentResult } from './AgentOrchestrator';
 import BackendClient from './BackendClient';
 import AuthManager from './AuthManager';
 
-// Import Gemini SDK for fallback
-let geminiModel: any = null;
+/**
+ * Type definitions for the CDN-loaded Google Generative AI SDK
+ * These types match the runtime behavior of window.google.genai loaded from the AI Studio CDN
+ * 
+ * Note: The CDN-loaded SDK uses a slightly different API than the @google/genai npm package.
+ * These types are defined inline to match the actual runtime behavior.
+ * 
+ * The global window.google is declared as `any` in index.tsx to support multiple Google APIs
+ * (OAuth, GenAI, etc.). These interfaces provide type safety for the GenAI subset.
+ */
+
+/**
+ * Response from the Gemini API containing generated content
+ */
+interface GeminiResponse {
+    text(): string;
+    candidates?: Array<{
+        content: unknown;
+        finishReason?: string;
+        safetyRatings?: unknown[];
+    }>;
+}
+
+/**
+ * Result wrapper containing the response and additional metadata
+ */
+interface GeminiResult {
+    response: GeminiResponse;
+}
+
+/**
+ * Configuration options for the generative model
+ */
+interface GenerativeModelConfig {
+    model: string;
+    safetySettings?: unknown[];
+    generationConfig?: {
+        temperature?: number;
+        topK?: number;
+        topP?: number;
+        maxOutputTokens?: number;
+    };
+}
+
+/**
+ * GenerativeModel instance with methods to generate content
+ * Returned by GoogleGenerativeAI.getGenerativeModel()
+ */
+interface GenerativeModel {
+    generateContent(prompt: string | { contents: string }): Promise<GeminiResult>;
+    generateContentStream?(prompt: string | { contents: string }): Promise<AsyncGenerator<GeminiResult>>;
+}
+
+/**
+ * Main GoogleGenerativeAI class for initializing the API
+ */
+interface GoogleGenerativeAIConstructor {
+    new (apiKey: string): {
+        getGenerativeModel(config: GenerativeModelConfig): GenerativeModel;
+    };
+}
+
+/**
+ * Structure of window.google.genai loaded from the CDN
+ */
+interface WindowGoogleGenAI {
+    GoogleGenerativeAI: GoogleGenerativeAIConstructor;
+}
+
+/**
+ * Properly typed Gemini model for fallback when backend is unavailable
+ * This is initialized lazily when the Google GenAI SDK is loaded
+ */
+let geminiModel: GenerativeModel | null = null;
 
 /**
  * Initialize Gemini model for fallback when backend is unavailable
  * Called lazily when needed, or after Google API loads
  */
-function initializeGeminiFallback() {
+function initializeGeminiFallback(): boolean {
     try {
         // Check if Google GenAI SDK is available
-        if (typeof window !== 'undefined' && (window as any).google && (window as any).google.genai) {
-            const { GoogleGenerativeAI } = (window as any).google.genai;
+        // Cast to access the genai property with proper typing
+        const googleSDK = window.google as { genai?: WindowGoogleGenAI } | undefined;
+        
+        if (typeof window !== 'undefined' && googleSDK?.genai) {
+            const { GoogleGenerativeAI } = googleSDK.genai;
             const apiKey = import.meta.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
             if (apiKey) {
                 const genAI = new GoogleGenerativeAI(apiKey);
@@ -46,13 +121,13 @@ function initializeGeminiFallback() {
 
 // Try to initialize immediately if possible
 let initializationAttempted = false;
-function ensureGeminiInitialized() {
+function ensureGeminiInitialized(): boolean {
     if (!geminiModel && !initializationAttempted) {
         initializationAttempted = true;
         initializeGeminiFallback();
     }
     // Retry if still not initialized (Google API might load later)
-    if (!geminiModel && typeof window !== 'undefined' && (window as any).google) {
+    if (!geminiModel && typeof window !== 'undefined' && window.google) {
         initializeGeminiFallback();
     }
     return geminiModel !== null;
