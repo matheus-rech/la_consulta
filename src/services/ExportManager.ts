@@ -36,8 +36,8 @@ const ExportManager = {
                 ...ext,
                 // Ensure coordinates are included
                 coordinates: {
-                    x: ext.coordinates?.x ?? ext.coordinates?.left ?? 0,
-                    y: ext.coordinates?.y ?? ext.coordinates?.top ?? 0,
+                    x: ext.coordinates?.x ?? 0,
+                    y: ext.coordinates?.y ?? 0,
                     width: ext.coordinates?.width ?? 0,
                     height: ext.coordinates?.height ?? 0
                 },
@@ -46,7 +46,7 @@ const ExportManager = {
                     method: ext.method,
                     timestamp: ext.timestamp,
                     page: ext.page,
-                    hasCoordinates: ext.coordinates?.x != null || ext.coordinates?.left != null
+                    hasCoordinates: ext.coordinates?.x != null
                 }
             })),
             // Include citation map if available
@@ -152,8 +152,8 @@ const ExportManager = {
                 ext.text,
                 ext.page,
                 ext.method,
-                ext.coordinates.x || ext.coordinates.left || 0,
-                ext.coordinates.y || ext.coordinates.top || 0,
+                ext.coordinates.x,
+                ext.coordinates.y,
                 ext.coordinates.width,
                 ext.coordinates.height,
                 new Date(ext.timestamp).toLocaleString()
@@ -232,8 +232,8 @@ const ExportManager = {
                 method: ext.method,
                 timestamp: ext.timestamp,
                 coordinates: {
-                    x: ext.coordinates.x || ext.coordinates.left || 0,
-                    y: ext.coordinates.y || ext.coordinates.top || 0,
+                    x: ext.coordinates.x,
+                    y: ext.coordinates.y,
                     width: ext.coordinates.width,
                     height: ext.coordinates.height,
                 },

@@ -13,8 +13,8 @@ export interface SearchResult {
     context: string;
     index: number;
     coordinates?: {
-        left: number;
-        top: number;
+        x: number;
+        y: number;
         width: number;
         height: number;
     };
