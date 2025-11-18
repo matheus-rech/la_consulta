@@ -197,12 +197,6 @@ const ExportManager = {
                     width: ext.coordinates.width,
                     height: ext.coordinates.height,
                 },
-                boundingBox: {
-                    x: ext.coordinates.x || ext.coordinates.left || 0,
-                    y: ext.coordinates.y || ext.coordinates.top || 0,
-                    width: ext.coordinates.width,
-                    height: ext.coordinates.height,
-                },
             })),
             citations: state.citationMap ? Object.entries(state.citationMap).map(([index, chunk]: [string, any]) => ({
                 index: parseInt(index),
