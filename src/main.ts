@@ -49,7 +49,7 @@ import SemanticSearchService from './services/SemanticSearchService';
 import AnnotationService from './services/AnnotationService';
 import BackendProxyService from './services/BackendProxyService';
 import SamplePDFService from './services/SamplePDFService';
-import CitationService, { highlightCitation, jumpToCitation } from './services/CitationService';
+import CitationService, { jumpToCitation } from './services/CitationService';
 import LRUCache from './utils/LRUCache';
 import CircuitBreaker from './utils/CircuitBreaker';
 import {
