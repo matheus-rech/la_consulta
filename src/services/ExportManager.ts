@@ -8,6 +8,7 @@ import AppStateManager from '../state/AppStateManager';
 import FormManager from '../forms/FormManager';
 import ExtractionTracker from '../data/ExtractionTracker';
 import StatusManager from '../utils/status';
+import type { TextChunk, Citation } from './CitationService';
 
 /**
  * ExportManager Object
@@ -198,19 +199,17 @@ const ExportManager = {
                     height: ext.coordinates.height,
                 },
             })),
-            citations: state.citationMap ? Object.entries(state.citationMap).map(([index, chunk]: [string, any]) => ({
+            citations: state.citationMap ? Object.entries(state.citationMap).map(([index, chunk]: [string, Citation]) => ({
                 index: parseInt(index),
-                text: chunk.text,
+                text: chunk.sentence,
                 pageNum: chunk.pageNum,
                 bbox: chunk.bbox,
-                section: chunk.section,
             })) : [],
-            textChunks: state.textChunks ? state.textChunks.map((chunk: any) => ({
+            textChunks: state.textChunks ? state.textChunks.map((chunk: TextChunk) => ({
                 index: chunk.index,
                 text: chunk.text,
                 pageNum: chunk.pageNum,
                 bbox: chunk.bbox,
-                section: chunk.section,
                 isHeading: chunk.isHeading,
             })) : [],
             metadata: {
