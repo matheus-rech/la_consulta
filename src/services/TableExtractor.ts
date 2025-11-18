@@ -97,9 +97,8 @@ class TableExtractor {
     /**
      * Step 2: Group text items into rows based on Y-coordinate
      * Items with similar Y values (within tolerance) belong to the same row
-     * TIGHTENED: Reduced tolerance from 5 to 3 for tighter row grouping
      */
-    private groupItemsByRow(items: TextItem[], tolerance = 3): TextItem[][] {
+    private groupItemsByRow(items: TextItem[], tolerance = 5): TextItem[][] {
         // Sort by Y coordinate
         const sorted = [...items].sort((a, b) => a.y - b.y)
 
@@ -132,9 +131,8 @@ class TableExtractor {
     /**
      * Step 3: Detect column positions by clustering X coordinates
      * Items that align vertically (similar X positions) form columns
-     * TIGHTENED: Reduced tolerance from 10 to 8 for better column detection
      */
-    private detectColumnPositions(row: TextItem[], tolerance = 8): number[] {
+    private detectColumnPositions(row: TextItem[], tolerance = 10): number[] {
         const positions = row.map(item => item.x)
 
         // Cluster nearby X positions
@@ -200,10 +198,12 @@ class TableExtractor {
      * A table is: multiple consecutive rows with aligned columns
      * 
      * TIGHTENED CRITERIA to reduce false positives:
-     * - Minimum 4 columns (was 3)
-     * - Minimum 3 rows (was 2)
-     * - Minimum table width/height requirements
-     * - Better alignment validation
+     * - Minimum 3 columns (was 3, unchanged)
+     * - Minimum 3 rows (was 2, increased)
+     * - Minimum 80% column alignment (was 70%, increased)
+     * - Minimum table width: 200px (new)
+     * - Minimum table height: 50px (new)
+     * - Maximum row height variation: 50% (new)
      */
     private detectTableRegions(rows: TextItem[][]): TableRegion[] {
         const tableRegions: TableRegion[] = []
@@ -212,9 +212,8 @@ class TableExtractor {
         rows.forEach((row, rowIndex) => {
             const columnPositions = this.detectColumnPositions(row)
 
-            // TIGHTENED: Require at least 4 columns (was 3)
-            // This filters out regular paragraphs with 3+ words
-            const hasMultipleColumns = columnPositions.length >= 4
+            // TIGHTENED: Require at least 3 columns
+            const hasMultipleColumns = columnPositions.length >= 3
             
             // TIGHTENED: Require better alignment (80% instead of 70%)
             const alignsWithTable = currentTable &&
@@ -224,9 +223,6 @@ class TableExtractor {
                 // Continue existing table
                 currentTable.rows.push(row)
             } else if (hasMultipleColumns) {
-                // Start new table
-                // TIGHTENED: Require at least 3 rows (was 2)
-                if (currentTable && currentTable.rows.length >= 3) {
                 // End previous table if it meets criteria
                 if (currentTable) {
                     this.computeTableProperties(currentTable)
@@ -241,7 +237,7 @@ class TableExtractor {
                     columnPositions: columnPositions,
                 }
             } else {
-                // Not a table row - end current table if exists
+                // Not a table row - end current table if it meets criteria
                 if (currentTable) {
                     this.computeTableProperties(currentTable)
                     if (this.isValidTable(currentTable)) {
@@ -264,69 +260,6 @@ class TableExtractor {
     }
 
     /**
-     * Validate that a table region meets minimum size requirements
-     * Filters out tiny "tables" that are just formatted text
-     */
-    private isValidTable(tableRegion: any): boolean {
-        const MIN_TABLE_ROWS = 3;
-        const MIN_TABLE_WIDTH = 200;
-        const MIN_TABLE_HEIGHT = 50;
-        const MAX_ASPECT_RATIO = 10;
-        const MIN_ASPECT_RATIO = 0.1;
-        const MIN_TABLE_COLUMNS = 4;
-        const MIN_COLUMN_SPACING = 30;
-
-        if (!tableRegion.rows || tableRegion.rows.length < MIN_TABLE_ROWS) {
-            return false
-        }
-
-        // Calculate bounding box
-        const allItems = tableRegion.rows.flat()
-        if (allItems.length === 0) {
-            return false
-        }
-
-        const xs = allItems.map((item: TextItem) => item.x)
-        const rights = allItems.map((item: TextItem) => item.x + item.width)
-        const ys = allItems.map((item: TextItem) => item.y)
-        const bottoms = allItems.map((item: TextItem) => item.y + item.height)
-
-        const minX = Math.min(...xs)
-        const maxX = Math.max(...rights)
-        const minY = Math.min(...ys)
-        const maxY = Math.max(...bottoms)
-
-        const width = maxX - minX
-        const height = maxY - minY
-
-        // TIGHTENED: Require minimum table dimensions
-        if (width < MIN_TABLE_WIDTH || height < MIN_TABLE_HEIGHT) {
-            return false
-        }
-
-        // Additional check: table should have reasonable aspect ratio
-        const aspectRatio = width / height
-        if (aspectRatio > MAX_ASPECT_RATIO || aspectRatio < MIN_ASPECT_RATIO) {
-            return false
-        }
-
-        // Check that we have multiple distinct columns
-        const columnPositions = tableRegion.columnPositions
-        if (columnPositions.length < MIN_TABLE_COLUMNS) {
-            return false
-        }
-
-        // Check column spacing - columns should be reasonably spaced
-        let hasGoodSpacing = false
-        for (let i = 1; i < columnPositions.length; i++) {
-            const spacing = columnPositions[i] - columnPositions[i - 1]
-            if (spacing > MIN_COLUMN_SPACING) { // At least 30px between columns
-                hasGoodSpacing = true
-                break
-            }
-        }
-
-        return hasGoodSpacing
      * Validate if a detected table region meets quality criteria
      * Filters out false positives like headers, lists, or misaligned text
      * 
@@ -382,26 +315,18 @@ class TableExtractor {
 
     /**
      * Check if column positions align with existing table columns
-     * TIGHTENED: At least 80% of positions must align within tolerance (was 70%)
-     * Tighter tolerance for better accuracy
      * At least threshold% of positions must align within tolerance
      */
     private alignsWithColumns(
         positions: number[],
         tableColumns: number[],
         tolerance = 10,  // TIGHTENED: Reduced from 15 to 10
-        minAlignmentRatio = 0.8  // TIGHTENED: Increased from 0.7 to 0.8
         threshold = 0.8  // TIGHTENED: Increased from 0.7 to 0.8
     ): boolean {
-        if (positions.length === 0 || tableColumns.length === 0) {
-            return false
-        }
-
         const aligned = positions.filter(pos =>
             tableColumns.some(col => Math.abs(pos - col) < tolerance)
         )
 
-        return aligned.length >= positions.length * minAlignmentRatio
         return aligned.length >= positions.length * threshold
     }
 
