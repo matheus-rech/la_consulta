@@ -21,7 +21,9 @@ describe('ExtractionTracker', () => {
     ExtractionTracker.setDependencies({
       appStateManager: mockAppStateManager,
       statusManager: mockStatusManager,
-      pdfRenderer: {},
+      pdfRenderer: {
+        renderPage: jest.fn(),
+      },
     });
 
     localStorage.clear();
