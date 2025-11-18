@@ -242,8 +242,6 @@ class TableExtractor {
                 }
             } else {
                 // Not a table row - end current table if exists
-                if (currentTable && currentTable.rows.length >= 3) {
-                // Not a table row - end current table if it meets criteria
                 if (currentTable) {
                     this.computeTableProperties(currentTable)
                     if (this.isValidTable(currentTable)) {
