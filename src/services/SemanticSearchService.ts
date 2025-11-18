@@ -228,6 +228,7 @@ export const SemanticSearchService = {
         const allTexts = textChunks.map(c => c.text);
         
         // Build inverted index once for efficiency
+        // Build inverted index for TF-IDF calculation
         const invertedIndex = buildInvertedIndex(allTexts);
 
         for (const chunk of textChunks) {
