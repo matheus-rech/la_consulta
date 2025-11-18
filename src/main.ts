@@ -956,7 +956,6 @@ function exposeWindowAPI() {
         // Citation functions
         CitationService,
         highlightCitation: highlightCitationOnPDF,
-        jumpToCitation,
 
         triggerCrashStateSave,
         triggerManualRecovery
