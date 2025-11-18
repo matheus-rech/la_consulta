@@ -238,7 +238,10 @@ export const BackendProxyService = {
                         errorMessage = errorData.message || errorData.error || errorMessage;
                     } else if (typeof response.text === 'function') {
                         const errorText = await response.text();
-                        if (errorText) errorMessage = errorText;
+                        // Only use response text if it's different from status text and provides more info
+                        if (errorText && errorText !== response.statusText) {
+                            errorMessage = `HTTP ${response.status}: ${errorText}`;
+                        }
                     }
                 } catch (e) {
                     // Ignore errors reading response body
