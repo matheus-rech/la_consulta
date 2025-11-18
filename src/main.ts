@@ -63,6 +63,7 @@ import {
 import FigureExtractor from './services/FigureExtractor';
 import TableExtractor from './services/TableExtractor';
 import AgentOrchestrator from './services/AgentOrchestrator';
+import DiagnosticsPanel from './services/DiagnosticsPanel';
 
 // Utilities
 import {
@@ -1037,7 +1038,11 @@ async function initializeApp() {
         await checkAndOfferRecovery();
         console.log('✓ Crash recovery check complete');
 
-        // 7. Show initial status
+        // 8. Initialize Diagnostics Panel
+        DiagnosticsPanel.initialize();
+        console.log('✓ Diagnostics Panel initialized');
+
+        // 9. Show initial status
         StatusManager.show('Clinical Extractor Ready. Load a PDF to begin.', 'info');
         console.log('✓ Clinical Extractor initialization complete');
 
