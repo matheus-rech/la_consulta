@@ -21,7 +21,7 @@ print_header() {
 }
 
 print_success() {
-    echo -e "${GREEN}✅ $1${NC}"
+grep -r "AIzaSy" --exclude-dir=node_modules --exclude-dir=dist .
 }
 
 print_error() {
