@@ -34,11 +34,10 @@ test.describe('Manual Real-World API Test', () => {
     console.log('📋 Step 3: Navigating to PICO form (Step 2)...');
 
     // Click the Next button to go from Step 1 to Step 2
-    const nextButton = page.locator('#next-step-btn');
-    if (await nextButton.isVisible()) {
-      await nextButton.click();
-      await page.waitForTimeout(1000);
-    }
+    const nextButton = page.locator('#next-btn');  // Correct ID is #next-btn
+    await expect(nextButton).toBeVisible({ timeout: 5000 });
+    await nextButton.click();
+    await page.waitForTimeout(1000);
 
     // Verify we're now on Step 2
     const step2 = page.locator('#step-2');

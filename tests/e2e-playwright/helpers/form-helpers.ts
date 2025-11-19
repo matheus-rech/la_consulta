@@ -26,6 +26,26 @@ export async function navigateToStep(page: Page, stepNumber: number) {
 }
 
 /**
+ * Navigate to PICO form (Step 2) - Required for AI PICO extraction tests
+ * This is the most common navigation needed for AI tests
+ */
+export async function navigateToPICOStep(page: Page) {
+  console.log('Navigating to PICO form (Step 2)...');
+
+  // Click Next button to go from Step 1 to Step 2
+  const nextButton = page.locator('#next-btn');  // Correct ID is #next-btn
+  await expect(nextButton).toBeVisible({ timeout: 5000 });
+  await nextButton.click();
+  await page.waitForTimeout(1000); // Wait for transition
+
+  // Verify Step 2 is now visible and active
+  const step2 = page.locator('#step-2');
+  await expect(step2).toBeVisible({ timeout: 5000 });
+
+  console.log('✅ Successfully navigated to Step 2 (PICO form)');
+}
+
+/**
  * Fill study identification fields (Step 1)
  */
 export async function fillStudyIdentification(

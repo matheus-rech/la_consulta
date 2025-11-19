@@ -15,6 +15,7 @@
 
 import { test, expect } from '@playwright/test';
 import { loadSamplePDF } from './helpers/pdf-helpers';
+import { navigateToPICOStep } from './helpers/form-helpers';
 import {
   waitForAIProcessing,
   verifyPICOFields,
@@ -33,6 +34,9 @@ test.describe('AI PICO Extraction (Real API)', () => {
 
     // Load sample PDF
     await loadSamplePDF(page);
+
+    // Navigate to PICO form (Step 2) - REQUIRED for AI button visibility
+    await navigateToPICOStep(page);
   });
 
   test('should generate PICO fields from PDF using real AI', async ({ page }) => {
