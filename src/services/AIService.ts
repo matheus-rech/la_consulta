@@ -36,6 +36,7 @@ import ExtractionTracker from '../data/ExtractionTracker';
 import StatusManager from '../utils/status';
 import LRUCache from '../utils/LRUCache';
 import CircuitBreaker from '../utils/CircuitBreaker';
+import { categorizeAIError, isErrorRetryable, formatErrorMessage, logErrorWithContext } from '../utils/aiErrorHandler';
 
 // ==================== AI CLIENT INITIALIZATION ====================
 
@@ -126,12 +127,18 @@ async function getPageText(pageNum: number): Promise<{ fullText: string, items: 
         return pageData;
     } catch (error) {
         console.error(`Error getting text from page ${pageNum}:`, error);
-        return { fullText: '', items: [] };
+        logErrorWithContext(error, `PDF text extraction - page ${pageNum}`);
+
+        // Throw error instead of silently returning empty data
+        throw new Error(
+            `Failed to extract text from page ${pageNum}. ` +
+            `${error instanceof Error ? error.message : 'Unknown error'}`
+        );
     }
 }
 
 /**
- * Gets all text from the loaded PDF document.
+ * Gets all text from the loaded PDF document with page-level error tracking.
  * @returns {Promise<string|null>} Full text of the document or null if no PDF is loaded.
  */
 async function getAllPdfText(): Promise<string | null> {
@@ -142,11 +149,40 @@ async function getAllPdfText(): Promise<string | null> {
     }
 
     let fullText = "";
+    const failedPages: number[] = [];
     StatusManager.show("Reading full document text...", "info", 60000); // Long timeout
+
     for (let i = 1; i <= state.totalPages; i++) {
-        const pageData = await getPageText(i); // getPageText is already defined and caches
-        fullText += pageData.fullText + "\n\n";
+        try {
+            const pageData = await getPageText(i);
+            if (!pageData.fullText || pageData.fullText.trim() === '') {
+                failedPages.push(i);
+                console.warn(`Page ${i} returned empty text`);
+            }
+            fullText += pageData.fullText + "\n\n";
+        } catch (error) {
+            console.error(`Failed to read page ${i}:`, error);
+            failedPages.push(i);
+            // Continue with other pages instead of failing completely
+        }
     }
+
+    // Report failed pages to user
+    if (failedPages.length > 0) {
+        StatusManager.show(
+            `⚠️ Warning: Failed to read ${failedPages.length} page(s): ${failedPages.join(', ')}`,
+            'warning',
+            10000
+        );
+    }
+
+    // Validate that we got some text
+    if (!fullText.trim()) {
+        throw new Error(
+            'No text could be extracted from the PDF. The document may be image-based, corrupted, or have no selectable text.'
+        );
+    }
+
     StatusManager.show("Document text reading complete.", "success");
     return fullText;
 }
@@ -203,23 +239,14 @@ const RETRY_CONFIG = {
 };
 
 /**
- * Checks if an error is retryable (429 or 5xx errors)
+ * Checks if an error is retryable (429, 5xx errors, network errors)
+ * Now uses the centralized error categorization system
  * @param error - The error to check
  * @returns True if the error should trigger a retry
  */
 function isRetryableError(error: any): boolean {
-    if (error?.status) {
-        return RETRY_CONFIG.retryableStatusCodes.includes(error.status);
-    }
-    
-    const errorMessage = error?.message?.toLowerCase() || '';
-    if (errorMessage.includes('rate limit') || 
-        errorMessage.includes('too many requests') ||
-        errorMessage.includes('429')) {
-        return true;
-    }
-    
-    return false;
+    // Use centralized error handler for consistent retry logic
+    return isErrorRetryable(error);
 }
 
 /**
@@ -228,6 +255,31 @@ function isRetryableError(error: any): boolean {
  */
 function delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Safely parses JSON with comprehensive error handling
+ * @param jsonText - JSON string to parse
+ * @param context - Context for error messaging
+ * @returns Parsed object
+ * @throws Error with user-friendly message if parsing fails
+ */
+function safeJsonParse(jsonText: string, context: string = 'AI response'): any {
+    try {
+        if (!jsonText || !jsonText.trim()) {
+            throw new Error('AI returned empty response');
+        }
+
+        return JSON.parse(jsonText);
+    } catch (parseError) {
+        console.error(`Failed to parse ${context}:`, jsonText);
+        logErrorWithContext(parseError, `JSON Parse - ${context}`, { rawResponse: jsonText });
+
+        throw new Error(
+            `AI returned invalid response format. This may indicate the document is too complex or the AI service is degraded. ` +
+            `Please try again or contact support if the issue persists.`
+        );
+    }
 }
 
 /**
@@ -340,7 +392,7 @@ async function generatePICO(): Promise<void> {
         });
 
         const jsonText = response.text;
-        const data = JSON.parse(jsonText);
+        const data = safeJsonParse(jsonText, 'PICO-T extraction');
 
         // Populate fields
         const populationField = document.getElementById('eligibility-population') as HTMLInputElement;
@@ -522,7 +574,7 @@ async function validateFieldWithAI(fieldId: string): Promise<void> {
         });
 
         const jsonText = response.text;
-        const validation = JSON.parse(jsonText);
+        const validation = safeJsonParse(jsonText, 'Field validation');
 
         if (validation.is_supported) {
             StatusManager.show(`✓ VALIDATED (Confidence: ${Math.round(validation.confidence_score * 100)}%): "${validation.supporting_quote}"`, 'success', 10000);
@@ -578,7 +630,7 @@ async function findMetadata(): Promise<void> {
         };
 
         const responseJson = await callGeminiWithSearch(systemPrompt, userPrompt, metadataSchema);
-        const data = JSON.parse(responseJson);
+        const data = safeJsonParse(responseJson, 'Metadata search');
 
         const doiField = document.getElementById('doi') as HTMLInputElement;
         const pmidField = document.getElementById('pmid') as HTMLInputElement;
@@ -662,7 +714,7 @@ async function handleExtractTables(): Promise<void> {
         });
 
         const jsonText = response.text;
-        const result = JSON.parse(jsonText);
+        const result = safeJsonParse(jsonText, 'Table extraction');
 
         if (result.tables && result.tables.length > 0 && resultsContainer) {
             renderTables(result.tables, resultsContainer);
