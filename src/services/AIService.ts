@@ -15,6 +15,19 @@
  * 5. handleExtractTables() - Extract tables from document (gemini-2.5-pro)
  * 6. handleImageAnalysis() - Analyze uploaded images (gemini-2.5-flash)
  * 7. handleDeepAnalysis() - Deep document analysis (gemini-2.5-pro + thinking)
+ *
+ * ⚠️ SECURITY WARNING:
+ * This implementation loads the Gemini API key from environment variables, which
+ * exposes it in the frontend JavaScript bundle. This is acceptable for:
+ * - Development and testing environments
+ * - Personal projects and demos
+ * - Applications with domain restrictions on the API key
+ *
+ * For production deployments:
+ * - Use a backend proxy or serverless functions to protect the API key
+ * - Implement rate limiting and request authentication
+ * - Monitor API usage for abuse
+ * - Consider using Firebase App Check or similar attestation
  */
 
 import { GoogleGenAI, Type } from "@google/genai";
@@ -395,15 +408,17 @@ async function generateSummary(): Promise<void> {
         const systemPrompt = "You are an expert clinical research assistant. Your task is to read the provided clinical study text and write a concise summary (2-3 paragraphs) focusing on the key findings, outcomes, and any identified predictors of those outcomes.";
         const userPrompt = `Please summarize the following clinical study text:\n\n${documentText}`;
 
-        const response = await retryWithExponentialBackoff(async () => {
-            return await initializeAI().models.generateContent({
-                model: 'gemini-flash-latest',
-                contents: [{ parts: [{ text: userPrompt }] }],
-                config: {
-                    systemInstruction: systemPrompt,
-                }
-            });
-        }, 'Summary generation');
+        const response = await aiCircuitBreaker.execute(async () => {
+            return await retryWithExponentialBackoff(async () => {
+                return await initializeAI().models.generateContent({
+                    model: 'gemini-flash-latest',
+                    contents: [{ parts: [{ text: userPrompt }] }],
+                    config: {
+                        systemInstruction: systemPrompt,
+                    }
+                });
+            }, 'Summary generation');
+        });
 
         const summaryText = response.text;
 
@@ -492,17 +507,19 @@ async function validateFieldWithAI(fieldId: string): Promise<void> {
             required: ["is_supported", "supporting_quote", "confidence_score"]
         };
 
-        const response = await retryWithExponentialBackoff(async () => {
-            return await initializeAI().models.generateContent({
-                model: 'gemini-2.5-pro',
-                contents: [{ parts: [{ text: userPrompt }] }],
-                config: {
-                    systemInstruction: systemPrompt,
-                    responseMimeType: "application/json",
-                    responseSchema: validationSchema
-                }
-            });
-        }, 'Field validation');
+        const response = await aiCircuitBreaker.execute(async () => {
+            return await retryWithExponentialBackoff(async () => {
+                return await initializeAI().models.generateContent({
+                    model: 'gemini-2.5-pro',
+                    contents: [{ parts: [{ text: userPrompt }] }],
+                    config: {
+                        systemInstruction: systemPrompt,
+                        responseMimeType: "application/json",
+                        responseSchema: validationSchema
+                    }
+                });
+            }, 'Field validation');
+        });
 
         const jsonText = response.text;
         const validation = JSON.parse(jsonText);
@@ -630,17 +647,19 @@ async function handleExtractTables(): Promise<void> {
             }
         };
 
-        const response = await retryWithExponentialBackoff(async () => {
-            return await initializeAI().models.generateContent({
-                model: 'gemini-2.5-pro',
-                contents: documentText,
-                config: {
-                    systemInstruction: systemPrompt,
-                    responseMimeType: "application/json",
-                    responseSchema: tableSchema
-                }
-            });
-        }, 'Table extraction');
+        const response = await aiCircuitBreaker.execute(async () => {
+            return await retryWithExponentialBackoff(async () => {
+                return await initializeAI().models.generateContent({
+                    model: 'gemini-2.5-pro',
+                    contents: documentText,
+                    config: {
+                        systemInstruction: systemPrompt,
+                        responseMimeType: "application/json",
+                        responseSchema: tableSchema
+                    }
+                });
+            }, 'Table extraction');
+        });
 
         const jsonText = response.text;
         const result = JSON.parse(jsonText);
@@ -753,12 +772,14 @@ async function handleImageAnalysis(): Promise<void> {
             text: prompt
         };
 
-        const response = await retryWithExponentialBackoff(async () => {
-            return await initializeAI().models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: { parts: [imagePart, textPart] },
-            });
-        }, 'Image analysis');
+        const response = await aiCircuitBreaker.execute(async () => {
+            return await retryWithExponentialBackoff(async () => {
+                return await initializeAI().models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: { parts: [imagePart, textPart] },
+                });
+            }, 'Image analysis');
+        });
 
         if (resultsContainer) resultsContainer.innerText = response.text;
 
@@ -799,15 +820,17 @@ async function handleDeepAnalysis(): Promise<void> {
 
         const fullPrompt = `Based on the following document text, please answer this question: ${prompt}\n\nDOCUMENT TEXT:\n${documentText}`;
 
-        const response = await retryWithExponentialBackoff(async () => {
-            return await initializeAI().models.generateContent({
-                model: 'gemini-2.5-pro',
-                contents: fullPrompt,
-                config: {
-                    thinkingConfig: { thinkingBudget: 32768 }
-                }
-            });
-        }, 'Deep analysis');
+        const response = await aiCircuitBreaker.execute(async () => {
+            return await retryWithExponentialBackoff(async () => {
+                return await initializeAI().models.generateContent({
+                    model: 'gemini-2.5-pro',
+                    contents: fullPrompt,
+                    config: {
+                        thinkingConfig: { thinkingBudget: 32768 }
+                    }
+                });
+            }, 'Deep analysis');
+        });
 
         if (resultsContainer) resultsContainer.innerText = response.text;
 
