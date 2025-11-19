@@ -28,6 +28,11 @@
 
 ---
 
+[![Playwright Tests](https://github.com/YOUR_USERNAME/clinical-extractor/actions/workflows/playwright-tests.yml/badge.svg)](https://github.com/YOUR_USERNAME/clinical-extractor/actions/workflows/playwright-tests.yml)
+[![TypeScript Check](https://github.com/YOUR_USERNAME/clinical-extractor/actions/workflows/typescript.yml/badge.svg)](https://github.com/YOUR_USERNAME/clinical-extractor/actions/workflows/typescript.yml)
+[![Production Build](https://github.com/YOUR_USERNAME/clinical-extractor/actions/workflows/build.yml/badge.svg)](https://github.com/YOUR_USERNAME/clinical-extractor/actions/workflows/build.yml)
+
+A web-based clinical data extraction platform for systematic review of medical research papers, with a focus on neurosurgical literature.
 ## Overview
 
 **Clinical Extractor** is a sophisticated web-based application designed for extracting structured data from clinical research papers (PDFs). It combines manual text selection with AI-powered extraction using Google's Gemini API, featuring a complete multi-agent pipeline with 6 specialized medical research agents.
@@ -312,66 +317,27 @@ git push -u origin feature/your-feature-name
 
 ### Project Structure
 
-```
-src/
-├── main.ts                       # Entry point (947 lines)
-├── types/                        # TypeScript interfaces
-├── config/                       # App configuration
-├── state/                        # State management
-├── data/                         # Data persistence
-├── forms/                        # Form wizard
-├── pdf/                          # PDF processing
-├── services/                     # AI, search, backend (16 services)
-└── utils/                        # Helpers, error handling, security
-
-tests/
-├── unit/                         # 6 unit test suites
-├── e2e/                          # End-to-end tests
-└── setup.ts                      # Jest configuration
-
-backend/                          # Python FastAPI backend (optional)
-├── app/                          # FastAPI application
-├── tests/                        # Backend tests
-└── README.md                     # Backend documentation
-
-docs/                             # Documentation
-├── MANUAL_TESTING_GUIDE.md
-├── Feature_Verification.md
-└── Clinical_Extractor_Improvement_Strategy.md
-
-analysis/                         # Architecture & analysis
-├── EXECUTIVE-SUMMARY.md
-├── architecture-map.md
-└── strategic-recommendations.md
-```
-
-### Testing
-
-The application includes comprehensive **Jest-based testing** with both unit and end-to-end tests.
-
-**Test Coverage:**
-- **Current:** ~65% line coverage
-- **Goal:** 80% coverage
-- **Critical Paths:** 90%+ coverage
-
-**Run Tests:**
+**Unit Tests:**
 ```bash
-# All tests
-npm test
-
-# With coverage report
-npm run test:coverage
-
-# Watch mode (auto-rerun on changes)
-npm run test:watch
-
-# Specific test file
-npm test AppStateManager.test.ts
+npm test          # Run all unit tests
+npm run test:watch     # Run tests in watch mode
+npm run test:coverage  # Generate coverage report
 ```
 
-### Backend Setup (Optional)
+**E2E Tests (Playwright):**
+```bash
+npm run test:e2e         # Run all E2E tests (headless)
+npm run test:e2e:headed  # Run with visible browser (debugging)
+npm run test:e2e:debug   # Step-through debugging mode
+```
 
-The Python FastAPI backend provides advanced features like vector search and ChromaDB integration.
+**⚠️ Important:** E2E AI tests (tests 23-35) require a valid `GEMINI_API_KEY` in `.env.local`:
+- Without the API key: **77/96 tests pass** (80.2% - all infrastructure tests)
+- With the API key: **96/96 tests pass** (100% - including AI integration tests)
+
+See [TESTING_GUIDE.md](TESTING_GUIDE.md) for comprehensive testing documentation.
+
+### Lint Code
 
 ```bash
 # Navigate to backend directory

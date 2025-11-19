@@ -154,3 +154,22 @@ export function clearSearchMarkers(searchMarkers: HTMLElement[]): void {
         el.classList.remove('search-highlight');
     });
 }
+
+/**
+ * Updates the enabled/disabled state of PDF navigation buttons
+ * Disables prev button on first page, next button on last page
+ * @param currentPage - Current page number (1-indexed)
+ * @param totalPages - Total number of pages in the PDF
+ */
+export function updateNavigationButtonStates(currentPage: number, totalPages: number): void {
+    const prevBtn = document.getElementById('pdf-prev-page') as HTMLButtonElement;
+    const nextBtn = document.getElementById('pdf-next-page') as HTMLButtonElement;
+
+    if (prevBtn) {
+        prevBtn.disabled = currentPage === 1;
+    }
+
+    if (nextBtn) {
+        nextBtn.disabled = currentPage === totalPages;
+    }
+}

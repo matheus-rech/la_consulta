@@ -191,12 +191,16 @@ describe('BackendProxyService', () => {
         });
 
         it('should throw after max retries', async () => {
+            // Configure for 3 retry attempts (will get 3 total calls: initial + 2 retries)
+            BackendProxyService.configure({ retryAttempts: 3 });
+            
             const mockError = new Error('Network error');
-
             (global.fetch as jest.Mock).mockRejectedValue(mockError);
 
             await expect(BackendProxyService.get('/users')).rejects.toThrow();
             
+            // With retryAttempts=3: attempt 1 fails → retry (1 < 3), attempt 2 fails → retry (2 < 3), attempt 3 fails → throw (3 >= 3)
+            // Total: 3 calls
             expect(global.fetch).toHaveBeenCalledTimes(3);
         });
 
@@ -217,11 +221,13 @@ describe('BackendProxyService', () => {
         });
 
         it('should throw on HTTP errors', async () => {
+            const mockHeaders = new Headers();
             const mockResponse = {
                 ok: false,
                 status: 404,
                 statusText: 'Not Found',
-                headers: new Map(),
+                headers: mockHeaders,
+                text: async () => 'Not Found',
             };
 
             (global.fetch as jest.Mock).mockResolvedValue(mockResponse);

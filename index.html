@@ -945,7 +945,7 @@
                         <label for="citation">Full Citation (Required)</label>
                         <div class="ai-field-group">
                             <textarea id="citation" name="citation" class="linked-input" placeholder="Paste citation or title, then click ✨" required></textarea>
-                            <button type="button" class="gemini-btn" title="Find Metadata with AI Search" onclick="findMetadata()" style="padding: 8px 12px; margin: 0; font-size: 14px;">✨</button>
+                            <button type="button" id="find-metadata-btn" class="gemini-btn" title="Find Metadata with AI Search" onclick="findMetadata()" style="padding: 8px 12px; margin: 0; font-size: 14px;">✨</button>
                         </div>
                         <div id="metadata-loading" class="gemini-loading" style="display: none;">✨ Searching for metadata...</div>
                     </div>
@@ -997,7 +997,7 @@
                 <!-- Step 2: PICO-T -->
                 <div class="step" id="step-2">
                     <h2>Step 2: PICO-T</h2>
-                    <button type="button" class="gemini-btn" onclick="generatePICO()">✨ Generate PICO-T Summary</button>
+                    <button type="button" id="generate-pico-btn" class="gemini-btn" onclick="generatePICO()">✨ Generate PICO-T Summary</button>
                     <div id="pico-loading" class="gemini-loading" style="display: none;">✨ Generating PICO-T...</div>
 
                     <div class="form-group">
@@ -1222,7 +1222,7 @@
                     <h3>Predictors of Outcome</h3>
                     <div class="form-group">
                         <label for="predictorsPoorOutcomeSurgical">Summary of Key Findings / Predictors</label>
-                        <button type="button" class="gemini-btn" onclick="generateSummary()">✨ Summarize Key Findings</button>
+                        <button type="button" id="generate-summary-btn" class="gemini-btn" onclick="generateSummary()">✨ Summarize Key Findings</button>
                         <div id="summary-loading" class="gemini-loading" style="display: none;">✨ Generating Summary...</div>
                         <div class="ai-field-group">
                             <textarea id="predictorsPoorOutcomeSurgical" name="predictorsPoorOutcomeSurgical" class="linked-input" rows="6"></textarea>
@@ -1250,7 +1250,7 @@
             <div class="pdf-toolbar">
                 <button type="button" id="pdf-upload-btn">📄 Load PDF</button>
                 <input type="file" id="pdf-file" accept=".pdf" style="display:none;" aria-label="Upload PDF file">
-                <button type="button" id="load-sample-btn" onclick="SamplePDFService.loadDefaultSample()" title="Load sample PDF from GitHub">📚 Load Sample</button>
+                <button type="button" id="load-sample-btn" title="Load sample PDF from GitHub">📚 Load Sample</button>
                 <button id="pdf-prev-page" aria-label="Previous Page">◄</button>
                 <span class="toolbar-text">
                     Page <input type="number" id="page-num" value="1" min="1" aria-label="Page number">

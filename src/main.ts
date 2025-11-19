@@ -49,6 +49,7 @@ import SemanticSearchService from './services/SemanticSearchService';
 import AnnotationService from './services/AnnotationService';
 import BackendProxyService from './services/BackendProxyService';
 import SamplePDFService from './services/SamplePDFService';
+import CitationService, { jumpToCitation } from './services/CitationService';
 import LRUCache from './utils/LRUCache';
 import CircuitBreaker from './utils/CircuitBreaker';
 import {
@@ -56,13 +57,13 @@ import {
     exportCSV,
     exportExcel,
     exportAudit,
-    exportAnnotatedPDF
+    exportAnnotatedPDF,
+    exportProvenance
 } from './services/ExportManager';
 import FigureExtractor from './services/FigureExtractor';
 import TableExtractor from './services/TableExtractor';
 import AgentOrchestrator from './services/AgentOrchestrator';
-import ProvenanceExporter from './services/ProvenanceExporter';
-import TextHighlighter from './services/TextHighlighter';
+import DiagnosticsPanel from './services/DiagnosticsPanel';
 
 // Utilities
 import {
@@ -104,6 +105,12 @@ function setupDependencies() {
         statusManager: StatusManager,
         dynamicFields: DynamicFields
     });
+
+    // CitationService needs access to canvas and scale
+    CitationService.setDependencies({
+        getCanvas: () => PDFRenderer.currentCanvas,
+        getScale: () => AppStateManager.getState().scale || 1.0
+    });
 }
 
 // ==================== PDF.JS CONFIGURATION ====================
@@ -112,12 +119,23 @@ function setupDependencies() {
  * Configure PDF.js worker
  */
 function configurePDFJS() {
+    // Wait for PDF.js to load if not already available
     if (window.pdfjsLib) {
         window.pdfjsLib.GlobalWorkerOptions.workerSrc =
             'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        console.log('PDF.js worker configured');
+        console.log('✓ PDF.js worker configured');
     } else {
-        console.error('PDF.js library not loaded');
+        console.warn('⚠ PDF.js library not loaded yet, will retry...');
+        // Retry after a short delay
+        setTimeout(() => {
+            if (window.pdfjsLib) {
+                window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+                    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                console.log('✓ PDF.js worker configured (retry)');
+            } else {
+                console.error('❌ PDF.js library failed to load. Check network connection and CDN availability.');
+            }
+        }, 500);
     }
 }
 
@@ -164,7 +182,15 @@ async function searchInPDF() {
                     </li>
                 `).join('');
                 
+                // Highlight results on current page
                 SearchService.highlightResults(state.currentPage);
+                
+                // If current page has results, ensure they're visible
+                const resultsOnCurrentPage = results.filter(r => r.page === state.currentPage);
+                if (resultsOnCurrentPage.length > 0) {
+                    // Re-render page to apply highlights
+                    await PDFRenderer.renderPage(state.currentPage, TextSelection);
+                }
             }
         }
 
@@ -190,6 +216,9 @@ function setupEventListeners() {
             pdfFile.value = '';
             pdfFile.click();
         });
+        console.log('✓ PDF upload button wired');
+    } else {
+        console.warn('⚠ PDF upload button or file input not found');
     }
 
     if (pdfFile) {
@@ -197,10 +226,36 @@ function setupEventListeners() {
             const file = (e.target as HTMLInputElement).files?.[0];
             if (file) {
                 console.log('📄 PDF file selected:', file.name);
-                await PDFLoader.loadPDF(file);
-                (e.target as HTMLInputElement).value = '';
+                StatusManager.show(`Loading ${file.name}...`, 'info');
+                try {
+                    await PDFLoader.loadPDF(file);
+                    (e.target as HTMLInputElement).value = '';
+                } catch (error) {
+                    console.error('Failed to load PDF:', error);
+                    StatusManager.show(`Failed to load PDF: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+                }
             }
         });
+        console.log('✓ PDF file input wired');
+    } else {
+        console.warn('⚠ PDF file input not found');
+    }
+    
+    // Sample PDF loading button
+    const loadSampleBtn = document.getElementById('load-sample-btn');
+    if (loadSampleBtn) {
+        loadSampleBtn.addEventListener('click', async () => {
+            try {
+                console.log('📚 Loading sample PDF...');
+                await SamplePDFService.loadDefaultSample();
+            } catch (error) {
+                console.error('Failed to load sample PDF:', error);
+                StatusManager.show('Failed to load sample PDF. Check console for details.', 'error');
+            }
+        });
+        console.log('✓ Sample PDF button wired');
+    } else {
+        console.warn('⚠ Sample PDF button not found');
     }
 
     // PDF Navigation
@@ -227,16 +282,35 @@ function setupEventListeners() {
     }
 
     if (pageNumInput) {
-        pageNumInput.onchange = (e) => {
-            const pageNum = parseInt((e.target as HTMLInputElement).value);
+        const handlePageNavigation = async (e: Event) => {
+            const inputElement = e.target as HTMLInputElement;
+            let pageNum = parseInt(inputElement.value);
             const state = AppStateManager.getState();
-            if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= state.totalPages) {
-                PDFRenderer.renderPage(pageNum, TextSelection);
-            } else {
-                // Reset to current page if invalid
-                (e.target as HTMLInputElement).value = state.currentPage.toString();
+
+            // Clamp page number to valid range
+            if (isNaN(pageNum)) {
+                pageNum = state.currentPage;
+            } else if (pageNum < 1) {
+                pageNum = 1;
+            } else if (pageNum > state.totalPages) {
+                pageNum = state.totalPages;
             }
+
+            // Update input value IMMEDIATELY after clamping (before async renderPage)
+            inputElement.value = pageNum.toString();
+
+            // Navigate to clamped page number
+            await PDFRenderer.renderPage(pageNum, TextSelection);
         };
+
+        pageNumInput.onchange = handlePageNavigation;
+
+        // Also handle Enter key press
+        pageNumInput.addEventListener('keydown', async (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                await handlePageNavigation(e);
+            }
+        });
     }
 
     // Zoom Controls
@@ -723,7 +797,26 @@ async function jumpToPage(pageNum: number) {
         return;
     }
     
-    await PDFRenderer.renderPage(state.pdfDoc, pageNum);
+    await PDFRenderer.renderPage(pageNum, TextSelection);
+}
+
+/**
+ * Highlight a citation on the PDF
+ */
+async function highlightCitationOnPDF(citationIndex: number) {
+    const state = AppStateManager.getState();
+    if (!state.pdfDoc || !state.citationMap) {
+        StatusManager.show('No PDF loaded or citation map not available', 'warning');
+        return;
+    }
+
+    await jumpToCitation(
+        citationIndex,
+        state.citationMap,
+        async (pageNum: number) => {
+            await PDFRenderer.renderPage(pageNum, TextSelection);
+        }
+    );
 }
 
 /**
@@ -819,19 +912,31 @@ function exposeWindowAPI() {
         handleImageAnalysis,
         handleDeepAnalysis,
 
-        // Export Functions (5)
+        // Export Functions (6)
         exportJSON,
         exportCSV,
         exportExcel,
         exportAudit,
         exportAnnotatedPDF,
-        
-        exportWithFullProvenance: ProvenanceExporter.exportWithFullProvenance,
-        downloadProvenanceJSON: ProvenanceExporter.downloadProvenanceJSON,
+        exportProvenance,
 
-        // Search Functions (2)
+        // Search Functions (4)
         toggleSearchInterface,
         searchInPDF,
+        nextSearchResult: () => {
+            const result = SearchService.nextResult();
+            if (result) {
+                PDFRenderer.renderPage(result.page, TextSelection);
+                SearchService.highlightResults(result.page);
+            }
+        },
+        previousSearchResult: () => {
+            const result = SearchService.previousResult();
+            if (result) {
+                PDFRenderer.renderPage(result.page, TextSelection);
+                SearchService.highlightResults(result.page);
+            }
+        },
 
         // New: Figure/Table Extraction & Visualization (4)
         extractFiguresFromPDF,
@@ -854,13 +959,37 @@ function exposeWindowAPI() {
         toggleAnnotationTools,
         setAnnotationTool,
         configureBackendProxy,
+        
+        // Sample PDF loading
+        loadSamplePDF: async () => {
+            try {
+                await SamplePDFService.loadDefaultSample();
+            } catch (error) {
+                console.error('Failed to load sample PDF:', error);
+                StatusManager.show('Failed to load sample PDF. Check console for details.', 'error');
+            }
+        },
+
+        // Expose core managers for debugging
+        AppStateManager,
+        ExtractionTracker,
+        FormManager,
+        StatusManager,
+
+        // Citation functions
+        CitationService,
+        highlightCitation: highlightCitationOnPDF,
 
         triggerCrashStateSave,
         triggerManualRecovery
     };
 
     // Also expose individual functions for backward compatibility with HTML onclick handlers
+    // This allows onclick="generatePICO()" to work directly
     Object.assign(window, window.ClinicalExtractor);
+    
+    // Also expose SamplePDFService methods directly
+    (window as any).SamplePDFService = SamplePDFService;
 
     console.log('Clinical Extractor API exposed to window');
 }
@@ -924,18 +1053,22 @@ async function initializeApp() {
         registerCleanupCallbacks();
         console.log('✓ Cleanup callbacks registered');
 
-        // 5. Set up event listeners
-        setupEventListeners();
-        console.log('✓ Event listeners configured');
-
-        // 6. Expose window API
+        // 5. Expose window API FIRST (before event listeners, so onclick handlers work)
         exposeWindowAPI();
         console.log('✓ Window API exposed');
+
+        // 6. Set up event listeners
+        setupEventListeners();
+        console.log('✓ Event listeners configured');
 
         await checkAndOfferRecovery();
         console.log('✓ Crash recovery check complete');
 
-        // 7. Show initial status
+        // 8. Initialize Diagnostics Panel
+        DiagnosticsPanel.initialize();
+        console.log('✓ Diagnostics Panel initialized');
+
+        // 9. Show initial status
         StatusManager.show('Clinical Extractor Ready. Load a PDF to begin.', 'info');
         console.log('✓ Clinical Extractor initialization complete');
 
@@ -951,9 +1084,23 @@ async function initializeApp() {
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeApp);
 } else {
-    // DOM already loaded
+    // DOM already loaded - run immediately
     initializeApp();
 }
+
+// Debug helper: Check if functions are available
+(window as any).checkClinicalExtractor = () => {
+    console.log('Clinical Extractor API Check:');
+    console.log('- window.ClinicalExtractor:', !!window.ClinicalExtractor);
+    console.log('- window.generatePICO:', typeof (window as any).generatePICO);
+    console.log('- window.SamplePDFService:', !!(window as any).SamplePDFService);
+    console.log('- window.pdfjsLib:', !!window.pdfjsLib);
+    console.log('- PDF elements:', {
+        uploadBtn: !!document.getElementById('pdf-upload-btn'),
+        fileInput: !!document.getElementById('pdf-file'),
+        sampleBtn: !!document.getElementById('load-sample-btn')
+    });
+};
 
 // Export for debugging
 export { AppStateManager, ExtractionTracker, FormManager, StatusManager };

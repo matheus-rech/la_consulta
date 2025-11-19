@@ -22,6 +22,30 @@
 
 import type { PDFDocumentProxy, PDFPageProxy } from '../pdf/PDFLoader';
 
+// ==================== DEPENDENCY INJECTION ====================
+
+/**
+ * Dependencies for CitationService
+ * Injected to avoid circular dependencies and accessing global window object
+ */
+interface Dependencies {
+    getCanvas: () => HTMLCanvasElement | null;
+    getScale: () => number;
+}
+
+/**
+ * Internal dependencies storage
+ */
+let dependencies: Dependencies | null = null;
+
+/**
+ * Set dependencies for CitationService
+ * Should be called during app initialization
+ */
+export const setDependencies = (deps: Dependencies): void => {
+    dependencies = deps;
+};
+
 // ==================== TYPE DEFINITIONS ====================
 
 /**
@@ -439,9 +463,120 @@ export const parseAIResponseWithCitations = (
     }
 };
 
+// ==================== CITATION HIGHLIGHTING ====================
+
+/**
+ * Highlight a citation on the PDF canvas
+ * Navigates to the citation's page and draws a highlight overlay
+ */
+export const highlightCitation = (
+    citationIndex: number,
+    citationMap: CitationMap,
+    renderPageCallback?: (pageNum: number) => Promise<void>
+): void => {
+    const citation = citationMap[citationIndex];
+    if (!citation) {
+        console.warn(`Citation [${citationIndex}] not found in citation map`);
+        return;
+    }
+
+    // Navigate to citation page if callback provided
+    if (renderPageCallback) {
+        renderPageCallback(citation.pageNum).then(() => {
+            // Wait for page to render, then highlight
+            setTimeout(() => {
+                drawCitationHighlight(citation);
+            }, 500);
+        });
+    } else {
+        // Just highlight if already on correct page
+        drawCitationHighlight(citation);
+    }
+};
+
+/**
+ * Draw citation highlight on canvas
+ * Uses injected dependencies to get canvas and scale
+ * @private
+ */
+const drawCitationHighlight = (citation: Citation): void => {
+    // Check if dependencies are injected
+    if (!dependencies) {
+        console.warn('Dependencies not injected. Call setDependencies() first.');
+        return;
+    }
+    
+    // Get canvas from injected dependency
+    const canvas = dependencies.getCanvas();
+    if (!canvas) {
+        console.warn('No canvas found for citation highlighting');
+        return;
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Get current scale from injected dependency
+    const scale = dependencies.getScale();
+
+    // Draw highlight overlay
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 235, 59, 0.4)'; // Yellow highlight
+    ctx.strokeStyle = 'rgba(255, 193, 7, 0.8)';
+    ctx.lineWidth = 2;
+    
+    const x = citation.bbox.x * scale;
+    const y = citation.bbox.y * scale;
+    const width = citation.bbox.width * scale;
+    const height = citation.bbox.height * scale;
+
+    ctx.fillRect(x, y, width, height);
+    ctx.strokeRect(x, y, width, height);
+
+    // Add citation index label
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText(`[${citation.index}]`, x + 2, y - 2);
+
+    ctx.restore();
+};
+
+/**
+ * Clear citation highlights from canvas
+ */
+export const clearCitationHighlights = (): void => {
+    // This would need to re-render the page to clear highlights
+    // For now, just log - actual implementation would require PDFRenderer integration
+    console.log('Clearing citation highlights - re-render page to clear');
+};
+
+/**
+ * Jump to citation location
+ * Navigates to the citation's page
+ */
+export const jumpToCitation = (
+    citationIndex: number,
+    citationMap: CitationMap,
+    renderPageCallback: (pageNum: number) => Promise<void>
+): Promise<void> => {
+    const citation = citationMap[citationIndex];
+    if (!citation) {
+        console.warn(`Citation [${citationIndex}] not found`);
+        return Promise.resolve();
+    }
+
+    return renderPageCallback(citation.pageNum).then(() => {
+        // Wait for the next paint cycle to ensure the page is rendered
+        requestAnimationFrame(() => {
+            highlightCitation(citationIndex, citationMap);
+        });
+    });
+};
+
 // ==================== EXPORT ALL ====================
 
 export default {
+    setDependencies,
     extractAllTextChunks,
     buildCitationMap,
     getCitation,
@@ -451,4 +586,7 @@ export default {
     createSmartCitableDocument,
     formatDocumentForAI,
     parseAIResponseWithCitations,
+    highlightCitation,
+    clearCitationHighlights,
+    jumpToCitation,
 };

@@ -11,19 +11,20 @@
     ],
     "skipLibCheck": true,
     "types": [
-      "node"
-    ],
-    "moduleResolution": "bundler",
-    "isolatedModules": true,
-    "moduleDetection": "force",
-    "allowJs": true,
-    "jsx": "react-jsx",
-    "paths": {
-      "@/*": [
-        "./*"
-      ]
-    },
-    "allowImportingTsExtensions": true,
-    "noEmit": true
-  }
+      "node",
+      "vite/client"
+    ]
+  },
+  "moduleResolution": "bundler",
+  "isolatedModules": true,
+  "moduleDetection": "force",
+  "allowJs": true,
+  "jsx": "react-jsx",
+  "paths": {
+    "@/*": [
+      "./*"
+    ]
+  },
+  "allowImportingTsExtensions": true,
+  "noEmit": true
 }

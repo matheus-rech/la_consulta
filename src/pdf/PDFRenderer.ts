@@ -15,7 +15,7 @@
 
 import AppStateManager from '../state/AppStateManager';
 import StatusManager from '../utils/status';
-import { addExtractionMarkersForPage, clearSearchMarkers } from '../utils/helpers';
+import { addExtractionMarkersForPage, clearSearchMarkers, updateNavigationButtonStates } from '../utils/helpers';
 import type { TextItem } from '../types';
 
 /**
@@ -232,12 +232,14 @@ export const PDFRenderer = {
             // Enable text selection on the layer
             TextSelection.enable(textLayer, textItems, pageNum);
 
-            // Get extractions from state and add markers
-            const extractions = state.extractions;
-            addExtractionMarkersForPage(pageNum, extractions);
-
-            // Add page to container
+            // Add page to container FIRST - must be in DOM before adding markers
             container.appendChild(pageDiv);
+
+            // Get extractions from state and add markers
+            // NOTE: Must be called AFTER pageDiv is in the DOM so querySelector works
+            // Get FRESH state to include any extractions added during rendering
+            const currentState = AppStateManager.getState();
+            addExtractionMarkersForPage(pageNum, currentState.extractions);
 
             // Store canvas reference for overlay rendering
             PDFRenderer.currentCanvas = canvas;
@@ -251,8 +253,15 @@ export const PDFRenderer = {
                 pageNumInput.value = pageNum.toString();
             }
 
+            // Update navigation button states (disable prev on page 1, next on last page)
+            updateNavigationButtonStates(pageNum, state.totalPages);
+
             // Clear any previous search markers
             clearSearchMarkers(state.searchMarkers.map(m => m.element));
+
+            // Re-apply search highlighting if there are search results
+            // Note: Search highlighting is handled by SearchService.highlightResults()
+            // which is called from main.ts after search completes
 
             // Render bounding box overlays if enabled
             if (PDFRenderer.showBoundingBoxes) {

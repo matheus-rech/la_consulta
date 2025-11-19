@@ -23,20 +23,13 @@ import type { EnhancedFigure, EnhancedTable } from '../services/AgentOrchestrato
 
 /**
  * Coordinates defining a bounding box for extracted text on a PDF page.
- * Uses x/y as the canonical coordinate system.
- * 
- * @deprecated left/top properties are deprecated; use x/y instead.
- * The normalizeCoordinates utility function converts legacy data.
+ * Uses x/y for position to maintain consistency across the codebase.
  */
 export interface Coordinates {
-  /** X position in PDF coordinates (canonical) */
-  x?: number;
-  /** Y position in PDF coordinates (canonical) */
-  y?: number;
-  /** @deprecated Use x instead */
-  left?: number;
-  /** @deprecated Use y instead */
-  top?: number;
+  /** X position in PDF coordinates */
+  x: number;
+  /** Y position in PDF coordinates */
+  y: number;
   /** Width of the bounding box */
   width: number;
   /** Height of the bounding box */
