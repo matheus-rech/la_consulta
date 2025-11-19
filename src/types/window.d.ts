@@ -31,6 +31,8 @@ declare global {
     };
     /** Calculate bounding box from text items */
     calculateBoundingBox: (items: TextItem[]) => Coordinates;
+    /** Normalize coordinates to use x/y structure */
+    normalizeCoordinates: (coords: Coordinates) => Coordinates;
     /** Add visual marker for an extraction */
     addExtractionMarker: (extraction: Extraction) => void;
     /** Add all extraction markers for a page */

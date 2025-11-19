@@ -104,12 +104,12 @@ npm run dev -- --debug
 
 ## Modular Architecture (Post-Refactoring + Multi-Agent Pipeline + Production Features)
 
-The codebase has evolved from a 2,000+ line monolith into **33 specialized modules** organized into **7 directories**, with a complete multi-agent AI pipeline, citation provenance system, error recovery, testing infrastructure, and backend integration.
+The codebase has evolved from a 2,000+ line monolith into **37 specialized modules** organized into **7 directories**, with a complete multi-agent AI pipeline, citation provenance system, error recovery, testing infrastructure, and backend integration.
 
 ### Directory Structure
 ```
 src/
-├── main.ts                          # Entry point & orchestration (947 lines) ⭐ UPDATED
+├── main.ts                          # Entry point & orchestration (959 lines) ⭐ UPDATED
 ├── types/
 │   ├── index.ts                     # TypeScript interfaces (extended with citations)
 │   └── window.d.ts                  # Window API type definitions
@@ -138,10 +138,12 @@ src/
 │   ├── ExportManager.ts             # Data export (210 lines)
 │   ├── FigureExtractor.ts           # PDF operator interception (256 lines)
 │   ├── MedicalAgentBridge.ts        # Gemini-based medical agents (265 lines)
+│   ├── ProvenanceExporter.ts        # Provenance data export (180+ lines) ⭐ NEW
 │   ├── SamplePDFService.ts          # Sample PDF management (206 lines) ⭐ NEW
 │   ├── SearchService.ts             # Search functionality (220 lines) ⭐ NEW
 │   ├── SemanticSearchService.ts     # Intelligent TF-IDF search (355 lines) ⭐ NEW
 │   ├── TableExtractor.ts            # Geometric table detection (341 lines)
+│   ├── TextHighlighter.ts           # Text highlighting utilities (150+ lines) ⭐ NEW
 │   └── TextStructureService.ts      # Text structure analysis (302 lines) ⭐ NEW
 └── utils/
     ├── CircuitBreaker.ts            # Fault tolerance pattern (140+ lines) ⭐ NEW
@@ -160,13 +162,14 @@ backend/                             # Python FastAPI backend ⭐ NEW
 └── README.md                        # Backend documentation
 
 tests/                               # Frontend test suite ⭐ NEW
-├── unit/                            # Unit tests (6 test files)
+├── unit/                            # Unit tests (7 test files)
 │   ├── AppStateManager.test.ts
 │   ├── AnnotationService.test.ts
 │   ├── BackendProxyService.test.ts
 │   ├── ExtractionTracker.test.ts
 │   ├── SecurityUtils.test.ts
-│   └── SemanticSearchService.test.ts
+│   ├── SemanticSearchService.test.ts
+│   └── TextHighlighter.test.ts
 ├── e2e/                             # End-to-end tests
 │   └── complete-workflow.test.ts
 ├── setup.ts                         # Jest configuration
@@ -174,13 +177,15 @@ tests/                               # Frontend test suite ⭐ NEW
 ```
 
 **Code Statistics:**
-- **Total Modules:** 33 TypeScript files (was 20)
-- **main.ts:** 947 lines (was 707) - +240 lines for new integrations
-- **New Services (9):** Citation, Annotation, Search, Semantic Search, Backend Client, Backend Proxy, Auth, Sample PDF, Text Structure
+- **Total Modules:** 37 TypeScript files (was 20)
+- **main.ts:** 959 lines (was 707) - +252 lines for new integrations
+- **Services:** 17 total (AIService, AgentOrchestrator, AnnotationService, AuthManager, BackendClient, BackendProxyService, CitationService, ExportManager, FigureExtractor, MedicalAgentBridge, ProvenanceExporter, SamplePDFService, SearchService, SemanticSearchService, TableExtractor, TextHighlighter, TextStructureService)
+- **New Services (11):** Citation, Annotation, Search, Semantic Search, Backend Client, Backend Proxy, Auth, Sample PDF, Text Structure, Provenance Exporter, Text Highlighter
 - **New Utilities (4):** Circuit Breaker, Error Boundary, Error Recovery, LRU Cache
-- **Testing:** 7 test files (6 unit + 1 e2e)
+- **Testing:** 8 test files (7 unit + 1 e2e)
 - **Backend:** Python FastAPI backend with complete API
 - **Documentation:** 30+ markdown guides (2,000+ lines total)
+- **Total Code:** ~10,600 lines of TypeScript
 
 ---
 
@@ -1347,6 +1352,116 @@ The Excel export is the primary format for systematic review workflows. It gener
 
 Excel files can be easily merged for meta-analysis using Excel, R, Python, or statistical software. For aggregating data from multiple papers, simply combine Excel exports using your preferred analysis tool.
 
+### ProvenanceExporter (`src/services/ProvenanceExporter.ts`)
+
+**Purpose:** Export extraction data with complete coordinate-level provenance
+
+**Features:**
+- Document metadata (filename, pages, extraction date)
+- Text chunks with bounding box coordinates
+- Tables with structural data and coordinates
+- Figures with image data and coordinates
+- Citations with sentence-level provenance
+- Multi-agent analysis results with confidence scores
+
+**Main Function:**
+```typescript
+import ProvenanceExporter from './services/ProvenanceExporter';
+
+// Export complete provenance data
+const provenanceData = ProvenanceExporter.exportProvenance({
+    includeTextChunks: true,
+    includeTables: true,
+    includeFigures: true,
+    includeCitations: true,
+    includeAgentResults: true
+});
+
+// Returns ProvenanceExport object with:
+interface ProvenanceExport {
+    document: { filename, totalPages, extractionDate };
+    textChunks: Array<{ index, text, pageNum, bbox, confidence }>;
+    tables: Array<{ id, pageNum, title, headers, rows, bbox }>;
+    figures: Array<{ id, pageNum, dataUrl, bbox }>;
+    citations: Array<{ index, text, pageNum, bbox }>;
+    agentResults: Array<{ agentName, confidence, extractedFields }>;
+}
+```
+
+**Export Formats:**
+- **JSON:** Complete provenance data for archival
+- **CSV:** Flattened coordinate data for analysis
+- **Excel:** Multi-sheet workbook with separate tabs for each data type
+
+**Use Cases:**
+1. **Reproducible Research:** Export complete audit trail with coordinates
+2. **Systematic Reviews:** Track provenance of all extracted data
+3. **Meta-Analysis:** Aggregate data from multiple papers with source verification
+4. **Publication:** Generate supplementary materials with full provenance
+5. **Collaboration:** Share verified extractions with team
+
+### TextHighlighter (`src/services/TextHighlighter.ts`)
+
+**Purpose:** Canvas-based visual highlighting for search results and citations
+
+**Features:**
+- Search result highlighting with yellow overlay
+- Citation highlighting with customizable colors
+- Smooth scrolling to highlighted text
+- Flash animations for emphasis
+- Multiple simultaneous highlights
+- Automatic cleanup of highlight overlays
+
+**Main Functions:**
+```typescript
+import TextHighlighter from './services/TextHighlighter';
+
+// Configure during app initialization
+TextHighlighter.configure({
+    container: '.pdf-page' // or HTMLElement
+});
+
+// Highlight text chunk (e.g., citation)
+TextHighlighter.highlightTextChunk(textChunk, {
+    color: 'rgba(255, 255, 0, 0.3)',    // Yellow semi-transparent
+    borderColor: 'rgba(255, 200, 0, 0.6)',
+    borderWidth: 2,
+    flash: true,                         // Animate on first appearance
+    scrollIntoView: true                 // Scroll to highlight
+});
+
+// Highlight search results
+TextHighlighter.highlightSearchResults(results, {
+    color: 'rgba(255, 255, 0, 0.3)'
+});
+
+// Clear all highlights
+TextHighlighter.clearAllHighlights();
+```
+
+**Highlight Options:**
+```typescript
+interface HighlightOptions {
+    color?: string;              // Fill color (default: yellow)
+    borderColor?: string;        // Border color (default: orange)
+    borderWidth?: number;        // Border width in pixels (default: 2)
+    flash?: boolean;             // Animate on appearance (default: false)
+    scrollIntoView?: boolean;    // Scroll to highlight (default: true)
+}
+```
+
+**Integration Points:**
+- **CitationService:** Highlight cited sentences when clicked
+- **SearchService:** Highlight search results in PDF
+- **SemanticSearchService:** Highlight TF-IDF ranked results
+- **Manual Selection:** Highlight user-selected text
+
+**Visual Behavior:**
+- Highlights rendered as absolutely positioned divs over PDF canvas
+- Z-index management ensures highlights appear above PDF but below UI controls
+- Flash animation: 3 pulses over 600ms for emphasis
+- Smooth scroll with offset to keep highlighted text centered
+
 ---
 
 ## Data Persistence
@@ -1613,16 +1728,18 @@ localStorage.getItem('clinical_extractions_simple')
 ## Known Issues & Limitations
 
 ### Current State (November 2025 - Production-Ready Features Complete)
-- ✅ Modular architecture complete (33 modules, was 20)
+- ✅ Modular architecture complete (37 modules, was 20)
 - ✅ Multi-agent AI pipeline operational (6 specialized agents)
 - ✅ Enterprise-grade citation provenance system
 - ✅ Error recovery & crash detection implemented
-- ✅ Testing infrastructure (Jest + 7 test suites)
+- ✅ Testing infrastructure (Jest + 8 test files)
 - ✅ Backend integration (Python FastAPI)
 - ✅ Semantic search with TF-IDF
 - ✅ PDF annotation system
 - ✅ Geometric figure & table extraction
 - ✅ Bounding box provenance visualization
+- ✅ Provenance export system (ProvenanceExporter)
+- ✅ Text highlighting utilities (TextHighlighter)
 - ✅ All 40+ functions exposed to Window API (was 32)
 - ✅ Dependency injection implemented
 - ✅ Clean TypeScript compilation
@@ -1694,59 +1811,49 @@ See `REFACTORING_COMPLETE.md` for complete transformation details.
 
 ## Resources & Documentation
 
-**Project Documentation:**
+**📚 Documentation Index:**
+- **Documentation Index:** `docs/README.md` - Complete guide to all documentation and navigation
 
 **Core Architecture:**
-- **CLAUDE.md:** This file - Complete project guide for AI assistants
-- **README.md:** Project overview and quick start
-- **AI Service Architecture:** `AI_SERVICE_ARCHITECTURE.md`
-- **Refactoring Summary:** `REFACTORING_COMPLETE.md`
+- **CLAUDE.md:** This file - Complete project guide for AI assistants (2,000+ lines)
+- **README.md:** Project overview, quick start, features, and getting started
+- **AI Service Architecture:** `AI_SERVICE_ARCHITECTURE.md` - Gemini API integration details
+- **Multi-Agent Pipeline Guide:** `MULTI_AGENT_PIPELINE_COMPLETE.md` - Complete multi-agent system
 
-**Multi-Agent System:**
-- **Multi-Agent Pipeline Guide:** `MULTI_AGENT_PIPELINE_COMPLETE.md`
-- **Agent Prompts Reference:** `AGENT_PROMPTS_REFERENCE.md`
-- **PDF Extraction Techniques:** `pdf-data-extraction-guide.md`
+**Reference Documentation (docs/):**
+- **Backend Integration:** `docs/BACKEND_INTEGRATION.md` - Secure API setup and authentication
+- **Agent Prompts Reference:** `docs/AGENT_PROMPTS_REFERENCE.md` - Medical research agent prompts
+- **Manual Testing Guide:** `docs/MANUAL_TESTING_GUIDE.md` - Complete testing procedures
+- **Feature Verification:** `docs/Feature_Verification.md` - Feature checklist and status
+- **Improvement Strategy:** `docs/Clinical_Extractor_Improvement_Strategy.md` - Production roadmap
 
-**Integration & Implementation:**
-- **Frontend-Backend Integration:** `FRONTEND_BACKEND_INTEGRATION.md` ⭐ NEW
-- **Integration Checklist:** `INTEGRATION_CHECKLIST.md`
-- **Integration Summary:** `INTEGRATION_SUMMARY.md` ⭐ NEW
-- **Implementation Summary:** `IMPLEMENTATION_SUMMARY.md` ⭐ NEW
-- **Integration Verification:** `INTEGRATION_VERIFICATION.md` ⭐ NEW
-
-**Phase Documentation:**
-- **Phase 4.2-4.3 Summary:** `PHASE_4.2_4.3_SUMMARY.md`
-- **Phase 5.4 Complete:** `PHASE_5_4_COMPLETE.md`
-- **Phase 5.5 Complete:** `PHASE_5_5_COMPLETE.md`
-- **Phase 5 Integration Notes:** `PHASE_5_INTEGRATION_NOTES.md`
-- **Phase 6 Complete:** `PHASE_6_COMPLETE.md`
-
-**Analysis & Strategy:**
-- **Executive Summary:** `analysis/EXECUTIVE-SUMMARY.md` ⭐ NEW
-- **Architecture Map:** `analysis/architecture-map.md` ⭐ NEW
-- **Top 10 Issues:** `analysis/top-10-issues.md` ⭐ NEW
-- **Quick Wins:** `analysis/quick-wins.md`, `analysis/quick-wins-complete.md` ⭐ NEW
-- **Error Handling Implementation:** `analysis/error-handling-implementation.md` ⭐ NEW
-- **Strategic Recommendations:** `analysis/strategic-recommendations.md` ⭐ NEW
-- **TypeScript Fixes:** `analysis/typescript-fixes.md` ⭐ NEW
-- **Google Sheets Decision:** `analysis/google-sheets-decision.md`
-
-**Testing & Quality:**
-- **Manual Testing Guide:** `docs/MANUAL_TESTING_GUIDE.md` ⭐ NEW
-- **Feature Verification:** `docs/Feature_Verification.md` ⭐ NEW
-- **Improvement Strategy:** `docs/Clinical_Extractor_Improvement_Strategy.md` ⭐ NEW
-- **Verification Checklist:** `VERIFICATION_CHECKLIST.md`
-- **Regression Fixes:** `REGRESSION_FIXES.md`
+**Analysis & Strategy (analysis/):**
+- **Executive Summary:** `analysis/EXECUTIVE-SUMMARY.md` - Current state assessment
+- **Architecture Map:** `analysis/architecture-map.md` - Complete system architecture
+- **Top 10 Issues:** `analysis/top-10-issues.md` - Known issues and priorities
+- **Quick Wins Complete:** `analysis/quick-wins-complete.md` - Completed improvements
+- **Error Handling Implementation:** `analysis/error-handling-implementation.md` - Error patterns
+- **Strategic Recommendations:** `analysis/strategic-recommendations.md` - Future priorities
+- **TypeScript Fixes:** `analysis/typescript-fixes.md` - TypeScript improvements
 
 **Backend:**
-- **Backend README:** `backend/README.md` ⭐ NEW
-- **Bach README:** `Bach/README.md` (Special implementation notes)
+- **Backend README:** `backend/README.md` - Python FastAPI backend setup and API reference
+
+**Archived Documentation (docs/archive/):**
+Historical documentation preserved for reference but may be outdated:
+- **Phase Documentation:** `docs/archive/PHASES/` - Development phase history (PHASE_4.x through PHASE_6, REFACTORING_COMPLETE)
+- **Completed Decisions:** `docs/archive/DECISIONS/` - Implementation decisions and checklists
+- **Integration History:** `docs/archive/` - Integration documentation history (INTEGRATION_SUMMARY, INTEGRATION_CHECKLIST, etc.)
+
+> **Note:** Always refer to current documentation first. Archived docs are for historical reference only.
 
 **External Resources:**
 - **Vite Docs:** https://vitejs.dev/
 - **PDF.js Docs:** https://mozilla.github.io/pdf.js/
 - **Gemini API:** https://ai.google.dev/docs
 - **TypeScript:** https://www.typescriptlang.org/docs/
+- **FastAPI:** https://fastapi.tiangolo.com/
+- **Jest:** https://jestjs.io/docs/getting-started
 
 ---
 
@@ -1783,7 +1890,9 @@ See `REFACTORING_COMPLETE.md` for complete transformation details.
 
 **Export & Persistence:**
 - **Export:** `services/ExportManager.ts`
+- **Provenance Export:** `services/ProvenanceExporter.ts` ⭐ NEW
 - **Samples:** `services/SamplePDFService.ts` ⭐ NEW
+- **Text Highlighting:** `services/TextHighlighter.ts` ⭐ NEW
 
 **Utilities:**
 - **Helpers:** `utils/helpers.ts`
@@ -1974,6 +2083,20 @@ const results = await SemanticSearchService.search(query, options);
 - Caching beneficial
 - Rate limiting required
 - Production-grade reliability needed
+
+**Use `ProvenanceExporter` when:**
+- Need complete coordinate-level provenance export
+- Exporting for systematic reviews or meta-analysis
+- Generating supplementary materials with audit trail
+- Sharing verified extractions with team
+- Archiving extraction results with full metadata
+
+**Use `TextHighlighter` when:**
+- Visual highlighting of search results needed
+- Citation highlighting on click required
+- Need smooth scrolling to specific text
+- Want flash animations for emphasis
+- Managing multiple simultaneous highlights
 
 ---
 
@@ -2271,5 +2394,180 @@ To reach production-ready E2E coverage, add:
 6. **Test Suite 8:** Error recovery (`08-error-recovery.spec.ts`)
 
 See `tests/e2e-playwright/README.md` for comprehensive documentation.
+## Branch Management Best Practices
+
+### Current Repository State
+
+As of November 2025, the repository had accumulated **60+ branches** from AI assistant work (Claude, Copilot, Devin), with 97% being stale or merged branches. Regular cleanup is essential for maintaining a professional, navigable repository.
+
+### Branch Lifecycle
+
+**Standard Workflow:**
+```
+Create → Develop → PR → Merge → **DELETE IMMEDIATELY**
+```
+
+**Maximum branch lifetime:** Until PR is merged or closed
+
+### Branch Naming Conventions
+
+**For AI Assistants (Claude, Copilot, Devin):**
+```
+claude/[feature-name]-[sessionId]
+copilot/[feature-name]
+devin/[timestamp]-[feature-name]
+```
+
+**For manual contributors:**
+```
+feature/[issue-number]-[short-description]
+bugfix/[issue-number]-[short-description]
+hotfix/[critical-issue]
+```
+
+### Cleanup Guidelines
+
+#### Immediate Cleanup (After Each PR)
+1. **After PR merge:** Click GitHub's "Delete branch" button
+2. **After PR close:** Delete the branch if work is abandoned
+3. **Local cleanup:** Run `git fetch --prune` weekly
+
+#### Periodic Cleanup (Monthly)
+1. **Audit branches:** Visit `https://github.com/[user]/[repo]/branches`
+2. **Identify stale branches:**
+   - No commits in 30+ days
+   - No open PR associated
+   - Work has been merged or superseded
+3. **Delete stale branches** via GitHub UI or CLI
+
+#### Bulk Cleanup (Quarterly)
+If branches accumulate despite best efforts:
+
+1. **Use provided scripts:**
+   ```bash
+   # Review what will be deleted
+   cat BRANCH_CLEANUP_SUMMARY.md
+
+   # Execute cleanup (requires permissions)
+   ./cleanup-branches.sh
+   ```
+
+2. **Manual cleanup via GitHub UI:**
+   - Go to: `https://github.com/[user]/[repo]/branches`
+   - Filter by prefix (`copilot/`, `devin/`, etc.)
+   - Bulk delete via UI
+
+3. **Via GitHub CLI** (if available):
+   ```bash
+   # Delete by pattern
+   gh api repos/[user]/[repo]/branches --paginate | \
+     jq -r '.[] | select(.name | startswith("copilot/")) | .name' | \
+     while read branch; do
+       gh api "repos/[user]/[repo]/git/refs/heads/$branch" -X DELETE
+     done
+   ```
+
+### Automated Protection
+
+**GitHub Repository Settings:**
+
+1. **Enable auto-delete for merged branches:**
+   - Settings → General → Pull Requests
+   - ✅ "Automatically delete head branches"
+
+2. **Branch protection rules:**
+   - Protect `master`/`main` from force pushes
+   - Require PR reviews before merge
+   - Require status checks to pass
+
+3. **Stale branch detection:**
+   - Use GitHub Actions or third-party apps
+   - Auto-notify on branches >30 days old
+   - Auto-close PRs with no activity >60 days
+
+### Permission Issues
+
+**If branch deletion fails with HTTP 403:**
+
+This occurs when git authentication lacks delete permissions:
+
+```
+error: RPC failed; HTTP 403 curl 22 The requested URL returned error: 403
+```
+
+**Solutions:**
+
+1. **Use GitHub Web UI** (easiest) - Delete via branches page
+2. **Generate PAT with delete permissions:**
+   - Go to: `https://github.com/settings/tokens`
+   - Create token with `repo` and `delete_repo` permissions
+   - Update git remote temporarily
+3. **Use GitHub CLI:** `gh api repos/.../git/refs/heads/[branch] -X DELETE`
+
+See `BRANCH_CLEANUP_MANUAL.md` for detailed instructions.
+
+### For AI Assistants
+
+**When working on this repository:**
+
+1. **After PR merge:** Your branch will be deleted automatically (if auto-delete enabled)
+2. **Session cleanup:** Don't create retry branches like `-again`, `-please-work`, `-yet-again`
+3. **Limit retries:** Max 2-3 attempts, then create new branch with different approach
+4. **Check before creating:** Verify branch doesn't already exist
+5. **Descriptive names:** Use feature names, not generic names like `fix-1`, `update-2`
+
+### Verification After Cleanup
+
+```bash
+# Check remaining branches (should be minimal)
+git fetch --prune
+git branch -r | wc -l
+
+# View remaining branches
+git branch -r
+
+# Expected: 2-5 branches (master + active work)
+```
+
+### Recovery from Accidental Deletion
+
+**Within 90 days of deletion:**
+
+1. Find commit SHA from:
+   - PR history on GitHub
+   - Local reflog: `git reflog --all | grep [branch-name]`
+   - GitHub commit history
+
+2. Recreate branch:
+   ```bash
+   git checkout -b [branch-name] [commit-sha]
+   git push origin [branch-name]
+   ```
+
+**After 90 days:** Commits may be garbage collected (permanent loss)
+
+### Metrics
+
+**Healthy repository:**
+- Total branches: <10
+- Active branches: 2-5
+- Stale branches (>30 days): 0
+- Branch lifetime: <7 days average
+
+**Repository health indicators:**
+- ✅ **Good:** 5 branches (1 main + 4 active PRs)
+- ⚠️ **Warning:** 15 branches (1 main + 14 with 10 stale)
+- 🚨 **Critical:** 60+ branches (1 main + 59 stale/merged)
+
+**This repository before cleanup (November 2025):**
+- Status: 🚨 Critical (60 total, 58 stale)
+- Action: Immediate cleanup required
+- Result: Reduced to <5 branches
+
+### Additional Resources
+
+- **GitHub Branch Management Docs:** https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-branches
+- **Automated Branch Cleanup Actions:** https://github.com/marketplace?type=actions&query=stale+branches
+- **Branch Cleanup Scripts:** See `cleanup-branches.sh` and `BRANCH_CLEANUP_SUMMARY.md` in repository
 
 ---
