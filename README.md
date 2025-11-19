@@ -4,6 +4,10 @@
 
 # Clinical Extractor
 
+[![Playwright Tests](https://github.com/YOUR_USERNAME/clinical-extractor/actions/workflows/playwright-tests.yml/badge.svg)](https://github.com/YOUR_USERNAME/clinical-extractor/actions/workflows/playwright-tests.yml)
+[![TypeScript Check](https://github.com/YOUR_USERNAME/clinical-extractor/actions/workflows/typescript.yml/badge.svg)](https://github.com/YOUR_USERNAME/clinical-extractor/actions/workflows/typescript.yml)
+[![Production Build](https://github.com/YOUR_USERNAME/clinical-extractor/actions/workflows/build.yml/badge.svg)](https://github.com/YOUR_USERNAME/clinical-extractor/actions/workflows/build.yml)
+
 A web-based clinical data extraction platform for systematic review of medical research papers, with a focus on neurosurgical literature.
 
 ## Features

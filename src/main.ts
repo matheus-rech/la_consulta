@@ -281,16 +281,35 @@ function setupEventListeners() {
     }
 
     if (pageNumInput) {
-        pageNumInput.onchange = (e) => {
-            const pageNum = parseInt((e.target as HTMLInputElement).value);
+        const handlePageNavigation = async (e: Event) => {
+            const inputElement = e.target as HTMLInputElement;
+            let pageNum = parseInt(inputElement.value);
             const state = AppStateManager.getState();
-            if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= state.totalPages) {
-                PDFRenderer.renderPage(pageNum, TextSelection);
-            } else {
-                // Reset to current page if invalid
-                (e.target as HTMLInputElement).value = state.currentPage.toString();
+
+            // Clamp page number to valid range
+            if (isNaN(pageNum)) {
+                pageNum = state.currentPage;
+            } else if (pageNum < 1) {
+                pageNum = 1;
+            } else if (pageNum > state.totalPages) {
+                pageNum = state.totalPages;
             }
+
+            // Update input value IMMEDIATELY after clamping (before async renderPage)
+            inputElement.value = pageNum.toString();
+
+            // Navigate to clamped page number
+            await PDFRenderer.renderPage(pageNum, TextSelection);
         };
+
+        pageNumInput.onchange = handlePageNavigation;
+
+        // Also handle Enter key press
+        pageNumInput.addEventListener('keydown', async (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                await handlePageNavigation(e);
+            }
+        });
     }
 
     // Zoom Controls

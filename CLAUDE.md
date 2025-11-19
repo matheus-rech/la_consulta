@@ -2,6 +2,38 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🚀 Quick Start for New Claude Code Sessions
+
+**First-time orientation in 30 seconds:**
+
+1. **What is this?** A TypeScript/Vite app for extracting clinical data from medical research PDFs using multi-agent AI
+2. **Run it:** `npm run dev` (opens on port 3000)
+3. **Test it:** `npm test` or `npm run test:watch`
+4. **Build it:** `npm run build`
+5. **Check types:** `npm run lint` (runs `tsc --noEmit`)
+
+**Key Architecture Points:**
+- **33 modules** organized into 7 directories (see [Directory Structure](#directory-structure))
+- **Dependency Injection** pattern (see [main.ts](src/main.ts) initialization)
+- **State Management:** Singleton `AppStateManager` with Observer pattern
+- **AI Service:** 7 Gemini AI functions + 6-agent medical pipeline
+- **Testing:** Jest with jsdom, 7 test suites (unit + e2e)
+
+**Environment Setup:**
+```bash
+# Required: Gemini API key
+echo 'VITE_GEMINI_API_KEY=your_key_here' > .env.local
+npm install
+npm run dev  # Opens http://localhost:3000
+```
+
+**Common Tasks:**
+- Add new service: Create in `src/services/`, export functions, add to Window API in `main.ts`
+- Debug AI: Check browser console, verify `VITE_GEMINI_API_KEY` in `.env.local`
+- Fix TypeScript: `npx tsc src/path/to/file.ts --noEmit`
+
+---
+
 ## Project Overview
 
 **Clinical Extractor** is a web-based application for extracting structured data from clinical research papers (PDFs). It combines manual text selection with AI-powered extraction using Google's Gemini API. Built as a modular TypeScript application using Vite, PDF.js for rendering, and Google GenAI SDK for intelligent extraction.
@@ -34,7 +66,7 @@ npm install
 
 ### Development Workflow
 ```bash
-# Start development server (port 3000)
+# Start development server (configured for port 3000)
 npm run dev
 
 # Build for production
@@ -42,6 +74,18 @@ npm run build
 
 # Preview production build
 npm run preview
+
+# Run tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+
+# TypeScript type checking (lint)
+npm run lint
 ```
 
 ### Testing & Debugging
@@ -90,6 +134,7 @@ src/
 │   ├── BackendClient.ts             # Backend API communication (345 lines) ⭐ NEW
 │   ├── BackendProxyService.ts       # API proxy with retry/caching (488 lines) ⭐ NEW
 │   ├── CitationService.ts           # Citation provenance tracking (454 lines) ⭐ NEW
+│   ├── DiagnosticsPanel.ts          # System health monitoring ⭐ NEW
 │   ├── ExportManager.ts             # Data export (210 lines)
 │   ├── FigureExtractor.ts           # PDF operator interception (256 lines)
 │   ├── MedicalAgentBridge.ts        # Gemini-based medical agents (265 lines)
@@ -136,6 +181,33 @@ tests/                               # Frontend test suite ⭐ NEW
 - **Testing:** 7 test files (6 unit + 1 e2e)
 - **Backend:** Python FastAPI backend with complete API
 - **Documentation:** 30+ markdown guides (2,000+ lines total)
+
+---
+
+## ⚠️ Critical Configuration Notes
+
+### TypeScript Configuration
+- **Target:** ES2022 (not ES2020 or earlier)
+- **Module Resolution:** `bundler` (Vite-specific)
+- **Decorators:** Enabled with `experimentalDecorators: true`
+- **JSX:** React JSX mode (despite no React dependency)
+- **Path Alias:** `@/*` maps to project root
+- **Important:** `noEmit: true` - TypeScript only type-checks, Vite handles compilation
+
+### Vite Configuration
+- **Dev Server Port:** 3000 (not default 5173)
+- **Host:** `0.0.0.0` (accessible from network)
+- **Build Target:** ES2020 (note: differs from TypeScript target ES2022)
+- **Environment Variables:** Both `process.env.API_KEY` and `process.env.GEMINI_API_KEY` are defined
+- **Source Maps:** Enabled in production builds
+
+### Environment Variable Gotcha
+The app expects `VITE_GEMINI_API_KEY` in `.env.local`, but Vite config also looks for `GEMINI_API_KEY`. For maximum compatibility:
+```bash
+# .env.local
+VITE_GEMINI_API_KEY=your_key_here
+GEMINI_API_KEY=your_key_here
+```
 
 ---
 
@@ -2076,5 +2148,128 @@ console.log(annotations)
 AnnotationService.clearAnnotations()
 AnnotationService.importAnnotations(savedData)
 ```
+
+---
+
+---
+
+## 🧪 Playwright E2E Testing ⭐ NEW (November 2025)
+
+### Quick Start
+
+```bash
+# Run all E2E tests (22 tests, headless)
+npm run test:e2e
+
+# Run with visible browser (recommended for debugging)
+npm run test:e2e:headed
+
+# Debug mode (step through tests)
+npm run test:e2e:debug
+
+# View HTML test report
+npm run test:e2e:report
+```
+
+### Test Suites
+
+**Test Suite 1: PDF Upload & Navigation** (`01-pdf-upload.spec.ts`)
+- 12 tests covering core PDF functionality
+- Load sample PDF, upload custom PDFs
+- Page navigation (next/prev/direct input)
+- Zoom controls (in/out)
+- Button state management
+- Page bounds validation
+
+**Test Suite 2: Manual Text Extraction** (`02-manual-extraction.spec.ts`)
+- 10 tests covering text selection and extraction
+- Field activation
+- Mouse-based text selection
+- Extraction to active fields
+- Trace log entries
+- Extraction markers on PDF
+- Coordinate tracking
+
+### Helper Utilities
+
+**PDF Helpers** (`tests/e2e-playwright/helpers/pdf-helpers.ts`)
+- `loadSamplePDF(page)` - Load Kim2016.pdf sample
+- `uploadCustomPDF(page, filePath)` - Upload custom PDF
+- `navigateToPage(page, pageNum)` - Go to specific page
+- `simulateTextSelection(page, start, end)` - Mouse text selection
+- `zoomTo(page, scale)` - Set zoom level
+- 12 more utility functions
+
+**Form Helpers** (`tests/e2e-playwright/helpers/form-helpers.ts`)
+- `navigateToStep(page, stepNumber)` - Navigate form wizard
+- `fillStudyIdentification(page, data)` - Fill Step 1
+- `activateField(page, fieldId)` - Activate for extraction
+- `getExtractionCount(page)` - Get extraction count
+- 4 more utility functions
+
+### Configuration
+
+**Playwright Config** (`playwright.config.ts`)
+- Single-worker execution (prevents state conflicts)
+- Auto-starts Vite dev server on port 3000
+- Screenshots/videos captured on failure
+- Traces captured on retry
+- Chromium browser (configurable for Firefox/Safari)
+
+**Test Directory** (`tests/e2e-playwright/`)
+```
+tests/e2e-playwright/
+├── fixtures/
+│   └── sample.pdf          # Test fixture
+├── helpers/
+│   ├── pdf-helpers.ts      # 17 PDF utilities
+│   └── form-helpers.ts     # 8 form utilities
+├── 01-pdf-upload.spec.ts   # 12 tests
+├── 02-manual-extraction.spec.ts  # 10 tests
+└── README.md               # Comprehensive documentation
+```
+
+### Test Results (Latest Run)
+
+- ✅ **9 passed** - Core functionality working
+- ⚠️ **3 failed** - Button state edge cases (minor issues)
+- ⏱️ **Total time:** ~23 seconds for 12 tests
+- 📊 **Coverage:** PDF upload, navigation, text extraction
+
+### Debugging Failed Tests
+
+```bash
+# Run specific failing test in debug mode
+npx playwright test -g "should disable prev button" --debug
+
+# View screenshots from failed tests
+open test-results/*/test-failed-*.png
+
+# View videos from failed tests
+open test-results/*/video.webm
+```
+
+### Environment Setup
+
+The tests use `.env.local` for configuration:
+```bash
+# .env.local (created automatically)
+VITE_GEMINI_API_KEY=your_key_here
+GEMINI_API_KEY=your_key_here
+```
+
+API key validation is performed automatically before running tests.
+
+### Next Steps for Test Expansion
+
+To reach production-ready E2E coverage, add:
+1. **Test Suite 3:** AI PICO extraction (`03-ai-pico-extraction.spec.ts`)
+2. **Test Suite 4:** Multi-agent pipeline (`04-multi-agent-pipeline.spec.ts`)
+3. **Test Suite 5:** Form navigation (`05-form-navigation.spec.ts`)
+4. **Test Suite 6:** Export functionality (`06-export-functionality.spec.ts`)
+5. **Test Suite 7:** Search & annotation (`07-search-annotation.spec.ts`)
+6. **Test Suite 8:** Error recovery (`08-error-recovery.spec.ts`)
+
+See `tests/e2e-playwright/README.md` for comprehensive documentation.
 
 ---
