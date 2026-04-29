@@ -47,7 +47,21 @@ declare global {
 
 
 // --- CONFIGURATION ---
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || 'dummy-key' });
+const API_KEY = process.env.API_KEY;
+
+if (!API_KEY) {
+    // A visible error for the user in the UI, as this is critical.
+    const body = document.querySelector('body');
+    if (body) {
+        body.innerHTML = `<div style="font-family: sans-serif; padding: 2em; text-align: center; color: #b71c1c; background: #ffebee;">
+            <h1>Configuration Error</h1>
+            <p>The Gemini API Key is missing. Please ensure the API_KEY environment variable is set.</p>
+        </div>`;
+    }
+    throw new Error("API_KEY environment variable not set.");
+}
+
+const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 const CONFIG = {
     // For Google Sheets (requires OAuth 2.0 Client ID)
