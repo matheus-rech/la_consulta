@@ -21,7 +21,9 @@ describe('ExtractionTracker', () => {
     ExtractionTracker.setDependencies({
       appStateManager: mockAppStateManager,
       statusManager: mockStatusManager,
-      pdfRenderer: {},
+      pdfRenderer: {
+        renderPage: jest.fn(),
+      },
     });
 
     localStorage.clear();
@@ -54,7 +56,7 @@ describe('ExtractionTracker', () => {
         fieldName: 'test',
         text: '<script>alert("xss")</script>Safe text',
         page: 1,
-        coordinates: { left: 0, top: 0, width: 10, height: 10 },
+        coordinates: { x: 0, y: 0, width: 10, height: 10 },
         method: 'manual',
         documentName: 'test.pdf',
       };
@@ -85,7 +87,7 @@ describe('ExtractionTracker', () => {
         fieldName: 'field1',
         text: 'text1',
         page: 1,
-        coordinates: { left: 0, top: 0, width: 10, height: 10 },
+        coordinates: { x: 0, y: 0, width: 10, height: 10 },
         method: 'manual',
         documentName: 'test.pdf',
       };
@@ -112,7 +114,7 @@ describe('ExtractionTracker', () => {
         fieldName: 'test',
         text: 'test',
         page: 1,
-        coordinates: { left: 0, top: 0, width: 10, height: 10 },
+        coordinates: { x: 0, y: 0, width: 10, height: 10 },
         method: 'manual',
         documentName: 'test.pdf',
       };
