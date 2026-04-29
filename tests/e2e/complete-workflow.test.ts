@@ -168,7 +168,7 @@ describe('Complete User Workflow E2E Test', () => {
         fieldName: 'test',
         text: maliciousText,
         page: 1,
-        coordinates: { left: 0, top: 0, width: 10, height: 10 },
+        coordinates: { x: 0, y: 0, width: 10, height: 10 },
         method: 'manual' as const,
         documentName: 'test.pdf',
       };
@@ -198,7 +198,7 @@ describe('Complete User Workflow E2E Test', () => {
         fieldName: 'population',
         text: 'Neural language models trained on character-level inputs',
         page: 1,
-        coordinates: { left: 50, top: 500, width: 400, height: 30 },
+        coordinates: { x: 50, y: 500, width: 400, height: 30 },
         method: 'gemini-pico' as const,
         documentName: 'Kim2016.pdf',
       };
@@ -281,7 +281,7 @@ describe('Complete User Workflow E2E Test', () => {
           fieldName: 'study_title',
           text: 'Character-Aware Neural Language Models',
           page: 1,
-          coordinates: { left: 100, top: 700, width: 200, height: 12 },
+          coordinates: { x: 100, y: 700, width: 200, height: 12 },
           method: 'manual' as const,
           documentName: 'Kim2016.pdf',
         },
@@ -312,7 +312,7 @@ describe('Complete User Workflow E2E Test', () => {
         fieldName: 'test',
         text: 'test',
         page: 1,
-        coordinates: { left: 0, top: 0, width: 10, height: 10 },
+        coordinates: { x: 0, y: 0, width: 10, height: 10 },
         method: 'manual' as const,
         documentName: 'test.pdf',
       };
@@ -361,7 +361,7 @@ describe('Complete User Workflow E2E Test', () => {
         fieldName: 'study_title',
         text: 'Character-Aware Neural Language Models',
         page: 1,
-        coordinates: { left: 100, top: 700, width: 200, height: 12 },
+        coordinates: { x: 100, y: 700, width: 200, height: 12 },
         method: 'manual' as const,
         documentName: 'Kim2016.pdf',
       };
@@ -372,7 +372,7 @@ describe('Complete User Workflow E2E Test', () => {
         fieldName: 'population',
         text: 'Neural language models',
         page: 1,
-        coordinates: { left: 50, top: 500, width: 400, height: 30 },
+        coordinates: { x: 50, y: 500, width: 400, height: 30 },
         method: 'gemini-pico' as const,
         documentName: 'Kim2016.pdf',
       };
