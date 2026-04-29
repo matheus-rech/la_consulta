@@ -35,7 +35,7 @@ describe('ExtractionTracker', () => {
         fieldName: 'study_title',
         text: 'Clinical Study Title',
         page: 1,
-        coordinates: { left: 10, top: 20, width: 100, height: 20 },
+        coordinates: { x: 10, y: 20, width: 100, height: 20 },
         method: 'manual',
         documentName: 'test.pdf',
       };
@@ -116,7 +116,7 @@ describe('ExtractionTracker', () => {
         method: 'manual',
         documentName: 'test.pdf',
       };
-      
+
       const result = ExtractionTracker.addExtraction(extraction);
 
       // Verify extraction was added
