@@ -1,6 +1,6 @@
 /**
  * Comprehensive End-to-End Test for Clinical Extractor
- * 
+ *
  * Tests the complete user journey with Kim2016.pdf:
  * 1. PDF Upload
  * 2. Text Extraction
@@ -8,7 +8,7 @@
  * 4. AI-Powered Extraction
  * 5. Form Population
  * 6. Data Export
- * 
+ *
  * This test validates all 6 major architectural components.
  */
 
@@ -20,7 +20,7 @@ import FormManager, { setDependencies as setFormManagerDependencies } from '../.
 import StatusManager from '../../src/utils/status';
 
 describe('Complete User Workflow E2E Test', () => {
-  
+
   beforeAll(() => {
     document.body.innerHTML = `
       <div id="pdf-pages"></div>
@@ -66,7 +66,7 @@ describe('Complete User Workflow E2E Test', () => {
   describe('Step 1: PDF Upload and Loading', () => {
     it('should initialize application state', () => {
       const state = AppStateManager.getState();
-      
+
       expect(state.pdfDoc).toBeNull();
       expect(state.currentPage).toBe(1);
       expect(state.totalPages).toBe(0);
@@ -105,7 +105,7 @@ describe('Complete User Workflow E2E Test', () => {
       };
 
       const textContent = await mockPage.getTextContent();
-      
+
       expect(textContent.items).toHaveLength(2);
       expect(textContent.items[0].str).toContain('Character-Aware');
       expect(textContent.items[1].str).toContain('Yoon Kim');
@@ -135,8 +135,8 @@ describe('Complete User Workflow E2E Test', () => {
         text: 'Character-Aware Neural Language Models',
         page: 1,
         coordinates: {
-          left: 100,
-          top: 700,
+          x: 100,
+          y: 700,
           width: 200,
           height: 12,
         },
@@ -183,7 +183,7 @@ describe('Complete User Workflow E2E Test', () => {
   describe('Step 4: AI-Powered Extraction', () => {
     it('should prevent concurrent AI operations with mutex', () => {
       AppStateManager.setState({ isProcessing: true });
-      
+
       const state = AppStateManager.getState();
       expect(state.isProcessing).toBe(true);
 
@@ -207,7 +207,7 @@ describe('Complete User Workflow E2E Test', () => {
 
       const extractions = ExtractionTracker.getExtractions();
       const aiExtractions = extractions.filter(e => e.method.startsWith('gemini'));
-      
+
       expect(aiExtractions.length).toBeGreaterThan(0);
       expect(aiExtractions[0].method).toBe('gemini-pico');
     });
@@ -255,12 +255,12 @@ describe('Complete User Workflow E2E Test', () => {
     it('should collect form data', () => {
       const titleInput = document.getElementById('study-title') as HTMLInputElement;
       const doiInput = document.getElementById('doi') as HTMLInputElement;
-      
+
       titleInput.value = 'Character-Aware Neural Language Models';
       doiInput.value = '10.1234/test.2016';
 
       const formData = FormManager.collectFormData();
-      
+
       expect(formData.study_title).toBe('Character-Aware Neural Language Models');
       expect(formData.doi).toBe('10.1234/test.2016');
     });
@@ -338,7 +338,7 @@ describe('Complete User Workflow E2E Test', () => {
 
     it('should cleanup resources on PDF change', () => {
       PDFRenderer.currentCanvas = document.createElement('canvas');
-      
+
       PDFRenderer.cleanup();
 
       expect(PDFRenderer.currentCanvas).toBeNull();
@@ -382,7 +382,7 @@ describe('Complete User Workflow E2E Test', () => {
 
       const titleInput = document.getElementById('study-title') as HTMLInputElement;
       const populationInput = document.getElementById('population') as HTMLTextAreaElement;
-      
+
       titleInput.value = extraction1.text;
       populationInput.value = extraction2.text;
 
