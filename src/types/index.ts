@@ -30,6 +30,10 @@ export interface Coordinates {
   x: number;
   /** Y position in PDF coordinates */
   y: number;
+  /** Legacy left position */
+  left?: number;
+  /** Legacy top position */
+  top?: number;
   /** Width of the bounding box */
   width: number;
   /** Height of the bounding box */
