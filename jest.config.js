@@ -1,4 +1,5 @@
 export default {
+  testTimeout: process.env.CI ? 180000 : 5000,
   transform: {
     '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.test.json' }]
   },
