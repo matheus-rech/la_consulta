@@ -20,7 +20,7 @@ describe('AppStateManager', () => {
       markdownContent: '',
       markdownLoaded: false,
       textChunks: [],
-      citationMap: new Map(),
+      citationMap: {},
       activeCitationIndex: null,
       extractedFigures: [],
       extractedTables: [],
@@ -31,7 +31,7 @@ describe('AppStateManager', () => {
     it('should return a deep copy of state', () => {
       const state1 = AppStateManager.getState();
       const state2 = AppStateManager.getState();
-      
+
       expect(state1).toEqual(state2);
       expect(state1).not.toBe(state2);
       expect(state1.extractions).not.toBe(state2.extractions);
@@ -39,7 +39,7 @@ describe('AppStateManager', () => {
 
     it('should clone Map objects correctly', () => {
       AppStateManager.setState({
-        pdfTextCache: new Map([[1, { text: 'test', page: 1 }]]),
+        pdfTextCache: new Map([[1, { text: 'test', page: 1, fullText: 'test', items: [] }]]),
       });
 
       const state = AppStateManager.getState();
