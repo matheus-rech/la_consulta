@@ -172,7 +172,7 @@ describe('System Core Logic Integration', () => {
         sourceQuote: 'Patient demographics from table',
         pageNumber: 1
       };
-      (MedicalAgentBridge.callAgent as jest.Mock).mockResolvedValue(mockAgentResult);
+      (MedicalAgentBridge.callAgent as any).mockResolvedValue(mockAgentResult);
 
       // Process the data through the orchestrator
       const result = await AgentOrchestrator.processExtractedData(
@@ -234,7 +234,7 @@ describe('System Core Logic Integration', () => {
         processingTime: 1200,
         validationStatus: 'validated'
       };
-      (MedicalAgentBridge.callAgent as jest.Mock).mockResolvedValue(mockAgentResult);
+      (MedicalAgentBridge.callAgent as any).mockResolvedValue(mockAgentResult);
 
       const result = await AgentOrchestrator.processExtractedData([], [demographicsTable]);
 
@@ -293,7 +293,7 @@ describe('System Core Logic Integration', () => {
         validationStatus: 'validated',
         sourceQuote: 'Outcomes data from clinical trial'
       };
-      (MedicalAgentBridge.callAgent as jest.Mock).mockResolvedValue(mockAgentResult);
+      (MedicalAgentBridge.callAgent as any).mockResolvedValue(mockAgentResult);
 
       // Step 3: Process with orchestrator
       const result = await AgentOrchestrator.processExtractedData([], [mockTable]);
@@ -357,7 +357,7 @@ describe('System Core Logic Integration', () => {
         processingTime: 500,
         validationStatus: 'failed'
       };
-      (MedicalAgentBridge.callAgent as jest.Mock).mockResolvedValue(mockFailedResult);
+      (MedicalAgentBridge.callAgent as any).mockResolvedValue(mockFailedResult);
 
       // Should not throw, but handle gracefully
       const result = await AgentOrchestrator.processExtractedData([], [mockTable]);
