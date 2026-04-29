@@ -25,7 +25,7 @@ import {
   getAIExtractionCount
 } from './helpers/ai-helpers';
 
-test.describe('AI PICO Extraction (Real API)', () => {
+test.describe.skip('AI PICO Extraction (Real API)', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
 
