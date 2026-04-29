@@ -47,21 +47,7 @@ declare global {
 
 
 // --- CONFIGURATION ---
-const API_KEY = process.env.API_KEY;
-
-if (!API_KEY) {
-    // A visible error for the user in the UI, as this is critical.
-    const body = document.querySelector('body');
-    if (body) {
-        body.innerHTML = `<div style="font-family: sans-serif; padding: 2em; text-align: center; color: #b71c1c; background: #ffebee;">
-            <h1>Configuration Error</h1>
-            <p>The Gemini API Key is missing. Please ensure the API_KEY environment variable is set.</p>
-        </div>`;
-    }
-    throw new Error("API_KEY environment variable not set.");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || 'dummy-key' });
 
 const CONFIG = {
     // For Google Sheets (requires OAuth 2.0 Client ID)
@@ -257,7 +243,7 @@ const PDFLoader = {
         StatusManager.showLoading(true);
         try {
             const arrayBuffer = await file.arrayBuffer();
-            
+
             // Load PDF for rendering (Lector library removed)
             // Fix: Property 'pdfjsLib' does not exist on type 'Window & typeof globalThis'. (Solved by declare global)
             const pdfDoc = await window.pdfjsLib.getDocument({
@@ -456,7 +442,7 @@ const PDFRenderer = {
                 span.dir = item.dir;
                 // Disabling font ligatures can improve selection accuracy.
                 span.style.fontFeatureSettings = '"liga" 0';
-                
+
                 // Fix: Property 'pdfjsLib' does not exist on type 'Window & typeof globalThis'. (Solved by declare global)
                 const tx = window.pdfjsLib.Util.transform(viewport.transform, item.transform);
                 span.style.left = tx[4] + 'px';
@@ -674,7 +660,7 @@ const FormManager = {
     },
     nextStep: function() {
          const state = AppStateManager.getState();
-        
+
          // --- VALIDATION LOGIC REMOVED ---
          /*
          const currentStepElement = document.getElementById(`step-${state.currentStep + 1}`);
@@ -1070,7 +1056,7 @@ async function generatePICO() {
 
         const systemPrompt = "You are an expert clinical research assistant. Your task is to extract PICO-T information from the provided clinical study text and return it as a JSON object. Be concise and accurate. If information is not found, return an empty string for that field.";
         const userPrompt = `Here is the clinical study text:\n\n${documentText}`;
-         
+
         // Fix: Use Type enum for schema definition
         const picoSchema = {
             type: Type.OBJECT,
@@ -1094,7 +1080,7 @@ async function generatePICO() {
                 responseSchema: picoSchema
             }
         });
-         
+
         const jsonText = response.text;
         const data = JSON.parse(jsonText);
 
@@ -1106,7 +1092,7 @@ async function generatePICO() {
         (document.getElementById('eligibility-outcomes') as HTMLInputElement).value = data.outcomes || '';
         (document.getElementById('eligibility-timing') as HTMLInputElement).value = data.timing || '';
         (document.getElementById('eligibility-type') as HTMLInputElement).value = data.studyType || '';
-         
+
         // Add to trace log
         const state2 = AppStateManager.getState();
         const coords = { x: 0, y: 0, width: 0, height: 0 }; // AI extractions have no coords
@@ -1128,7 +1114,7 @@ async function generatePICO() {
         document.getElementById('pico-loading').style.display = 'none';
     }
 }
-         
+
 /**
  * ✨ Generates a summary of key findings using Gemini API.
  */
@@ -1152,10 +1138,10 @@ async function generateSummary() {
         if (!documentText) {
             throw new Error("Could not read text from the PDF.");
         }
-        
+
         const systemPrompt = "You are an expert clinical research assistant. Your task is to read the provided clinical study text and write a concise summary (2-3 paragraphs) focusing on the key findings, outcomes, and any identified predictors of those outcomes.";
         const userPrompt = `Please summarize the following clinical study text:\n\n${documentText}`;
-        
+
         const response = await ai.models.generateContent({
             model: 'gemini-flash-latest',
             contents: [{ parts: [{ text: userPrompt }] }],
@@ -1163,16 +1149,16 @@ async function generateSummary() {
                 systemInstruction: systemPrompt,
             }
         });
-         
+
         const summaryText = response.text;
-         
+
         // Fix: Property 'value' does not exist on type 'HTMLElement'.
         (document.getElementById('predictorsPoorOutcomeSurgical') as HTMLTextAreaElement).value = summaryText;
-         
+
         // Add to trace log
         const state2 = AppStateManager.getState();
         ExtractionTracker.addExtraction({ fieldName: 'summary (AI)', text: summaryText, page: 0, coordinates: {x:0,y:0,width:0,height:0}, method: 'gemini-summary', documentName: state2.documentName });
-         
+
         StatusManager.show('✨ Key findings summary generated by Gemini!', 'success');
 
      } catch (error) {
@@ -1194,7 +1180,7 @@ async function validateFieldWithAI(fieldId) {
         StatusManager.show(`Field ${fieldId} not found.`, 'error');
         return;
     }
-     
+
     // Fix: Property 'value' does not exist on type 'HTMLElement'.
     const claim = field.value;
     if (!claim) {
@@ -1210,7 +1196,7 @@ async function validateFieldWithAI(fieldId) {
         StatusManager.show('Please wait for the current operation to finish.', 'warning');
         return;
     }
-     
+
     AppStateManager.setState({ isProcessing: true });
     StatusManager.showLoading(true);
     StatusManager.show(`✨ Validating claim with Gemini: "${claim.substring(0, 30)}..."`, 'info');
@@ -1220,29 +1206,29 @@ async function validateFieldWithAI(fieldId) {
         if (!documentText) {
             throw new Error("Could not read text from PDF for validation.");
         }
-        
+
         const systemPrompt = `You are a fact-checking expert specializing in clinical research papers. Your task is to determine if a given "claim" is directly supported by the provided "document text". You must respond with a JSON object.`;
         const userPrompt = `DOCUMENT TEXT:\n"""${documentText}"""\n\nCLAIM:\n"""${claim}"""\n\nBased on the document text, is the claim supported? Provide a direct quote if it is.`;
 
         const validationSchema = {
             type: Type.OBJECT,
             properties: {
-                "is_supported": { 
-                    type: Type.BOOLEAN, 
-                    description: "True if the claim is directly supported by the text, otherwise false." 
+                "is_supported": {
+                    type: Type.BOOLEAN,
+                    description: "True if the claim is directly supported by the text, otherwise false."
                 },
-                "supporting_quote": { 
-                    type: Type.STRING, 
-                    description: "A direct quote from the document that supports the claim. If not supported, this should be an empty string or a brief explanation." 
+                "supporting_quote": {
+                    type: Type.STRING,
+                    description: "A direct quote from the document that supports the claim. If not supported, this should be an empty string or a brief explanation."
                 },
-                "confidence_score": { 
-                    type: Type.NUMBER, 
-                    description: "Your confidence in the validation from 0.0 to 1.0." 
+                "confidence_score": {
+                    type: Type.NUMBER,
+                    description: "Your confidence in the validation from 0.0 to 1.0."
                 }
             },
             required: ["is_supported", "supporting_quote", "confidence_score"]
         };
-        
+
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-pro',
             contents: [{ parts: [{ text: userPrompt }] }],
@@ -1272,7 +1258,7 @@ async function validateFieldWithAI(fieldId) {
         StatusManager.showLoading(false);
     }
 }
-         
+
 /**
  * ✨ Finds study metadata using Gemini with Google Search.
  */
@@ -1288,7 +1274,7 @@ async function findMetadata() {
         StatusManager.show('Please enter a citation or title first.', 'warning');
         return;
     }
-     
+
     AppStateManager.setState({ isProcessing: true });
     document.getElementById('metadata-loading').style.display = 'block';
     StatusManager.show('✨ Searching Google for metadata...', 'info');
@@ -1296,7 +1282,7 @@ async function findMetadata() {
     try {
         const systemPrompt = "You are a research assistant. Find the metadata for the given study. Use Google Search to find the information. If a value isn't found, return an empty string for it. Provide only the JSON response.";
         const userPrompt = `Find the DOI, PMID, journal name, and publication year for the following study: "${citationText}"`;
-         
+
         const metadataSchema = {
             type: Type.OBJECT,
             properties: {
@@ -1309,7 +1295,7 @@ async function findMetadata() {
 
         const responseJson = await callGeminiWithSearch(systemPrompt, userPrompt, metadataSchema);
         const data = JSON.parse(responseJson);
-         
+
         // Fix: Property 'value' does not exist on type 'HTMLElement'.
         if (data.doi) (document.getElementById('doi') as HTMLInputElement).value = data.doi;
         if (data.pmid) (document.getElementById('pmid') as HTMLInputElement).value = data.pmid;
@@ -1406,15 +1392,15 @@ function renderTables(tables, container) {
     tables.forEach((tableData, index) => {
         const details = document.createElement('details');
         details.open = true; // Open by default
-        
+
         const summary = document.createElement('summary');
         summary.textContent = `Table ${index + 1}: ${tableData.title || 'Untitled'}`;
-        
+
         const description = document.createElement('p');
         description.textContent = tableData.description || '';
         description.style.fontSize = '11px';
         description.style.fontStyle = 'italic';
-        
+
         const table = document.createElement('table');
         const thead = document.createElement('thead');
         const tbody = document.createElement('tbody');
@@ -1440,14 +1426,14 @@ function renderTables(tables, container) {
                 tbody.appendChild(bodyRow);
             }
         }
-        
+
         table.appendChild(thead);
         table.appendChild(tbody);
-        
+
         details.appendChild(summary);
         if(tableData.description) details.appendChild(description);
         details.appendChild(table);
-        
+
         container.appendChild(details);
     });
 }
@@ -1471,7 +1457,7 @@ async function handleImageAnalysis() {
         StatusManager.show("Please enter a prompt for image analysis.", "warning");
         return;
     }
-    
+
     // Fix: Property 'files' does not exist on type 'HTMLElement'.
     const file = fileInput.files[0];
     resultsContainer.innerHTML = 'Analyzing image... ✨';
@@ -1488,7 +1474,7 @@ async function handleImageAnalysis() {
         const textPart = {
             text: prompt
         };
-        
+
         // Fix: Type error in generateContent call
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
@@ -1529,9 +1515,9 @@ async function handleDeepAnalysis() {
     try {
         const documentText = await getAllPdfText();
         if (!documentText) return;
-        
+
         const fullPrompt = `Based on the following document text, please answer this question: ${prompt}\n\nDOCUMENT TEXT:\n${documentText}`;
-        
+
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-pro',
             contents: fullPrompt,
@@ -1539,7 +1525,7 @@ async function handleDeepAnalysis() {
                 thinkingConfig: { thinkingBudget: 32768 }
             }
         });
-        
+
         resultsContainer.innerText = response.text;
 
     } catch (error) {
@@ -1770,7 +1756,7 @@ document.getElementById('image-upload-input').addEventListener('change', (event)
         preview.onload = () => URL.revokeObjectURL(preview.src); // free memory
     }
 });
- 
+
 // Expose Save functions globally
 // Fix: 'handleSubmitToGoogleSheets' does not exist on type 'Window...'. (Solved by declare global)
 window.handleSubmitToGoogleSheets = async (e) => {
@@ -1783,7 +1769,7 @@ window.handleSubmitToGoogleSheets = async (e) => {
          StatusManager.show('Google API client is not loaded yet. Please wait.', 'warning');
          return;
     }
-     
+
     // --- VALIDATION LOGIC REMOVED ---
     /*
     if (!FormManager.validateAllSteps()) {
@@ -1794,7 +1780,7 @@ window.handleSubmitToGoogleSheets = async (e) => {
 
     StatusManager.showLoading(true);
     StatusManager.show('Authenticating with Google...', 'info');
-     
+
     try {
         // Get auth token
         gapiTokenClient.callback = async (tokenResponse) => {
@@ -1804,7 +1790,7 @@ window.handleSubmitToGoogleSheets = async (e) => {
             // Fix: Cannot find name 'gapi'. (Solved by declare global)
             await window.gapi.client.load('sheets', 'v4');
             StatusManager.show('Saving to Google Sheets...', 'info');
-             
+
             const state = AppStateManager.getState();
             const formData = FormManager.collectFormData();
             const extractions = ExtractionTracker.getExtractions();
@@ -1865,7 +1851,7 @@ window.handleSubmitToGoogleSheets = async (e) => {
             StatusManager.showLoading(false);
             StatusManager.show('✓ Successfully saved to Google Sheets!', 'success');
         };
-         
+
         // Check if we already have a token
         // Fix: Cannot find name 'gapi'. (Solved by declare global)
         if (window.gapi.client.getToken() === null) {
