@@ -99,6 +99,14 @@ declare global {
     ClinicalExtractor: any;
     /** Convert blob to base64 */
     blobToBase64: (blob: Blob) => Promise<string>;
+    /** Backend proxy service for API calls */
+    BackendProxyService: any;
+    /** Manually trigger crash state save for testing */
+    triggerCrashStateSave: () => void;
+    /** Circuit breaker for fault tolerance */
+    CircuitBreaker: any;
+    /** Global application configuration */
+    CONFIG: any;
   }
 }
 
