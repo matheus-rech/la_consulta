@@ -43,7 +43,7 @@ describe('AppStateManager', () => {
       });
 
       const state = AppStateManager.getState();
-      expect(state.pdfTextCache.get(1)).toEqual({ text: 'test', page: 1 });
+      expect(state.pdfTextCache.get(1)).toEqual({ text: 'test', page: 1, fullText: 'test', items: [] });
     });
   });
 
