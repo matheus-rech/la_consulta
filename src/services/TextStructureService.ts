@@ -136,7 +136,7 @@ const TextStructureService = {
                 paragraphs.push(paragraph);
 
                 paragraphChunks.forEach(c => {
-                    chunkIndexToParagraphId.set(c.chunkIndex, paragraph.id);
+                    chunkIndexToParagraphId.set(c.index, paragraph.id);
                 });
 
                 if (currentSection) {
