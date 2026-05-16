@@ -2,6 +2,38 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 📑 Table of Contents
+
+**Quick Navigation:**
+- [Project Overview](#project-overview) - What this application does
+- [Development Commands](#development-commands) - Setup and workflow
+- [Modular Architecture](#modular-architecture-post-refactoring--multi-agent-pipeline--production-features) - 33 modules organized
+- [Core Architecture Patterns](#core-architecture-patterns) - State management, DI, initialization
+- [Citation Provenance System](#citation-provenance-system--new-nobel-prize-worthy-) - Nobel-worthy citation tracking 🏆
+- [Error Recovery & Crash Detection](#error-recovery--crash-detection--new) - Automatic crash recovery
+- [Advanced Search & Annotation](#advanced-search--annotation--new) - Semantic search, TF-IDF, annotations
+- [Backend Integration](#backend-integration--new) - Python FastAPI backend
+- [AI Service Architecture](#ai-service-architecture) - 7 Gemini AI functions
+- [Multi-Agent Pipeline](#multi-agent-pipeline-architecture--new) - 6 specialized medical agents
+- [PDF Handling System](#pdf-handling-system) - PDF.js rendering and extraction
+- [Form Management System](#form-management-system) - 8-step wizard
+- [Export & Integration](#export--integration) - JSON, CSV, Excel, HTML exports
+- [Data Persistence](#data-persistence) - LocalStorage and recovery
+- [Configuration & Security](#configuration--security) - API keys and sanitization
+- [Memory Management](#memory-management) - Leak prevention
+- [Testing Infrastructure](#testing-infrastructure--new) - Jest tests (7 suites)
+- [Window API](#window-api-46-functions--services--updated) - 46 exposed functions
+- [Adding New Features](#adding-new-features) - Development guidelines
+- [Common Development Tasks](#common-development-tasks) - Debugging, testing
+- [Known Issues & Limitations](#known-issues--limitations) - Current state
+- [Resources & Documentation](#resources--documentation) - 30+ guides
+- [Quick Reference](#quick-reference) - File organization
+- [Best Practices for AI Assistants](#best-practices-for-ai-assistants--new) - Working with this codebase
+- [Development Workflow](#development-workflow-best-practices) - Git, testing, deployment
+- [Troubleshooting Guide](#troubleshooting-guide) - Common issues
+
+---
+
 ## Project Overview
 
 **Clinical Extractor** is a web-based application for extracting structured data from clinical research papers (PDFs). It combines manual text selection with AI-powered extraction using Google's Gemini API. Built as a modular TypeScript application using Vite, PDF.js for rendering, and Google GenAI SDK for intelligent extraction.
@@ -1422,31 +1454,27 @@ npm test AppStateManager.test.ts
 
 ---
 
-## Window API (40+ Functions) ⭐ UPDATED
+## Window API (46 Functions & Services) ⭐ UPDATED
 
-The application exposes 40+ functions globally via `window.ClinicalExtractor` for backward compatibility with HTML onclick handlers.
+The application exposes **46 functions and services** globally via `window.ClinicalExtractor` for backward compatibility with HTML onclick handlers.
+
+> **📝 Note:** This list is auto-generated from `src/main.ts`. Run `npm run docs:api` to regenerate.
 
 **Categories:**
 
-- **Helpers (8):** calculateBoundingBox, addExtractionMarker, addExtractionMarkersForPage, autoAdvanceField, clearSearchMarkers, blobToBase64, triggerCrashStateSave, triggerManualRecovery ⭐ NEW
+- **Helper Functions (6):** calculateBoundingBox, addExtractionMarker, addExtractionMarkersForPage, autoAdvanceField, clearSearchMarkers, blobToBase64
 
-- **Fields (9):** addIndication, addIntervention, addArm, addMortality, addMRS, addComplication, addPredictor, removeElement, updateArmSelectors
+- **Field Management (9):** addIndication, addIntervention, addArm, addMortality, addMRS, addComplication, addPredictor, removeElement, updateArmSelectors
 
-- **AI (7):** generatePICO, generateSummary, validateFieldWithAI, findMetadata, handleExtractTables, handleImageAnalysis, handleDeepAnalysis
+- **AI Functions (7):** generatePICO, generateSummary, validateFieldWithAI, findMetadata, handleExtractTables, handleImageAnalysis, handleDeepAnalysis
 
-- **Export (5):** exportJSON, exportCSV, exportExcel, exportAudit, exportAnnotatedPDF
+- **Export Functions (5):** exportJSON, exportCSV, exportExcel, exportAudit, exportAnnotatedPDF
 
-- **Search (6):** toggleSearchInterface, searchInPDF, semanticSearch, clearSearchResults, nextSearchResult, previousSearchResult ⭐ NEW
+- **Search Functions (2):** toggleSearchInterface, searchInPDF
 
-- **Multi-Agent Pipeline (4):** runFullAIPipeline, extractFiguresFromPDF, extractTablesFromPDF, displayPipelineResults
+- **Figure/Table Extraction & Visualization (4):** extractFiguresFromPDF, extractTablesFromPDF, toggleBoundingBoxes, toggleTableRegions
 
-- **Provenance Visualization (2):** toggleBoundingBoxes, toggleTableRegions
-
-- **Citation System (4):** processPDFForCitations, extractCitations, highlightCitation, jumpToCitation ⭐ NEW
-
-- **Annotations (5):** addAnnotation, removeAnnotation, exportAnnotations, importAnnotations, clearAnnotations ⭐ NEW
-
-- **Backend (3):** uploadPDFToBackend, syncWithBackend, checkBackendHealth ⭐ NEW
+- **Multi-Agent Pipeline & Services (13):** runFullAIPipeline, SemanticSearchService, AnnotationService, BackendProxyService, SamplePDFService, toggleSemanticSearch, performSemanticSearch, jumpToPage, toggleAnnotationTools, setAnnotationTool, configureBackendProxy, triggerCrashStateSave, triggerManualRecovery
 
 **Usage in HTML:**
 ```html

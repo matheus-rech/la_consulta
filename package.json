@@ -10,7 +10,10 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "docs:api": "node scripts/generate-window-api-docs.cjs",
+    "docs:validate": "node scripts/validate-docs.cjs",
+    "docs:check": "npm run docs:validate && npm run docs:api"
   },
   "dependencies": {
     "@google/genai": "^1.29.1",
