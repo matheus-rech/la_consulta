@@ -646,9 +646,15 @@ async function runFullAIPipeline() {
         // Step 4: Display results
         displayPipelineResults(enhancedTables, enhancedFigures, pipelineStats);
 
+        // A failing agent still yields an enhanced record, so reaching the end says nothing on its own; zero confidence across every call means the pipeline produced nothing usable and announcing success there hides a total outage from the user.
+        const agentsProducedNothing =
+            pipelineStats.agentsInvoked > 0 && pipelineStats.averageConfidence === 0;
+
         StatusManager.show(
-            `✅ Pipeline Complete! Processed ${pipelineStats.tablesProcessed} tables + ${pipelineStats.figuresProcessed} figures with ${pipelineStats.agentsInvoked} agent calls (Avg confidence: ${(pipelineStats.averageConfidence * 100).toFixed(1)}%)`,
-            'success'
+            agentsProducedNothing
+                ? `Pipeline failed: all ${pipelineStats.agentsInvoked} agent calls came back with no usable result`
+                : `✅ Pipeline Complete! Processed ${pipelineStats.tablesProcessed} tables + ${pipelineStats.figuresProcessed} figures with ${pipelineStats.agentsInvoked} agent calls (Avg confidence: ${(pipelineStats.averageConfidence * 100).toFixed(1)}%)`,
+            agentsProducedNothing ? 'error' : 'success'
         );
 
         console.log('🎉 Multi-Agent Pipeline Results:', {
