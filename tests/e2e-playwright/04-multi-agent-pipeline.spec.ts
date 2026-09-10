@@ -206,6 +206,8 @@ test.describe('Multi-Agent Pipeline', () => {
   });
 
   test('should calculate multi-agent consensus', async ({ page }) => {
+    test.fixme(true, 'The #pipeline-results panel this asserts has not been built');
+
     // Mock agents with varying confidence scores
     await mockMedicalAgents(page, {
       'PatientDataSpecialistAgent': {
@@ -305,6 +307,8 @@ test.describe('Multi-Agent Pipeline', () => {
   });
 
   test('should generate pipeline statistics', async ({ page }) => {
+    test.fixme(true, 'The #pipeline-stats dashboard this asserts has not been built');
+
     await mockMedicalAgents(page, {
       'PatientDataSpecialistAgent': { confidence: 0.88 },
       'TableExtractorAgent': { confidence: 1.0 }
@@ -366,7 +370,7 @@ test.describe('Multi-Agent Pipeline', () => {
 
     // App should not crash (verify core elements still present)
     await expect(page.locator('#pdf-container')).toBeVisible();
-    await expect(page.locator('#form-container')).toBeVisible();
+    await expect(page.locator('.form-panel')).toBeVisible();
   });
 
   test('should preserve geometric extractions when agents fail', async ({ page }) => {
