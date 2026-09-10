@@ -87,23 +87,26 @@ const ExportManager = {
     },
 
     /**
-     * Generate and export audit report as HTML
-     * Opens in new tab with document metadata, form data, and extractions
+     * Generate and export audit report as a standalone HTML file
+     * Contains document metadata, form data, and extractions with their provenance
      */
     exportAudit: function() {
         const formData = FormManager.collectFormData();
-        // Generate simplified HTML locally for preview
         const state = AppStateManager.getState();
         const extractions = ExtractionTracker.getExtractions();
-        let html = `<h1>Audit Report</h1><h2>Document: ${state.documentName}</h2><h3>Form Data</h3><ul>`;
+        const generatedAt = new Date().toISOString();
+
+        // An audit report is filed alongside the extraction, so it downloads like every other export rather than opening in a tab whose blob URL is revoked a second later.
+        let html = `<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<title>Audit Report</title>\n</head>\n<body>\n`;
+        html += `<h1>Audit Report</h1><h2>Document: ${state.documentName}</h2><p>Report date: ${generatedAt}</p><h3>Form Data</h3><ul>`;
         Object.entries(formData).forEach(([key, value]) => html += `<li><b>${key}:</b> ${value}</li>`);
         html += `</ul><h3>Extractions</h3>`;
         extractions.forEach(ext => html += `<p><b>${ext.fieldName} (Page ${ext.page}):</b> "${ext.text}" <i>@ ${ext.timestamp}</i></p>`);
+        html += `\n</body>\n</html>\n`;
+
         const blob = new Blob([html], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
-        setTimeout(() => URL.revokeObjectURL(url), 1000); // Clean up blob URL
-        StatusManager.show('Audit report generated (Preview)', 'success');
+        this.downloadFile(blob, `audit_report_${Date.now()}.html`);
+        StatusManager.show('Audit report exported', 'success');
     },
 
     /**
