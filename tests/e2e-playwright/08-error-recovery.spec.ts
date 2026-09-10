@@ -13,7 +13,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { loadSamplePDF } from './helpers/pdf-helpers';
+import { loadSamplePDF, simulateTextSelection } from './helpers/pdf-helpers';
 import { fillStudyIdentification } from './helpers/form-helpers';
 
 test.describe('Error Recovery and Handling', () => {
@@ -50,7 +50,7 @@ test.describe('Error Recovery and Handling', () => {
 
     // Check if crash state was saved
     const crashState = await page.evaluate(() => {
-      return localStorage.getItem('clinical_extractor_crash_state');
+      return localStorage.getItem('clinical_extractor_crash_recovery');
     });
 
     // Crash state should exist (if error boundary caught it)
@@ -80,7 +80,7 @@ test.describe('Error Recovery and Handling', () => {
         },
       };
 
-      localStorage.setItem('clinical_extractor_crash_state', JSON.stringify(state));
+      localStorage.setItem('clinical_extractor_crash_recovery', JSON.stringify(state));
     });
 
     // Reload page
@@ -127,7 +127,7 @@ test.describe('Error Recovery and Handling', () => {
         },
       };
 
-      localStorage.setItem('clinical_extractor_crash_state', JSON.stringify(crashState));
+      localStorage.setItem('clinical_extractor_crash_recovery', JSON.stringify(crashState));
     });
 
     // Reload
@@ -157,7 +157,7 @@ test.describe('Error Recovery and Handling', () => {
         appState: { documentName: 'Test.pdf' },
       };
 
-      localStorage.setItem('clinical_extractor_crash_state', JSON.stringify(crashState));
+      localStorage.setItem('clinical_extractor_crash_recovery', JSON.stringify(crashState));
     });
 
     // Reload
@@ -174,7 +174,7 @@ test.describe('Error Recovery and Handling', () => {
 
       // Verify crash state was cleared
       const crashState = await page.evaluate(() => {
-        return localStorage.getItem('clinical_extractor_crash_state');
+        return localStorage.getItem('clinical_extractor_crash_recovery');
       });
 
       expect(crashState).toBeNull();
@@ -351,12 +351,11 @@ test.describe('Error Recovery and Handling', () => {
   });
 
   test('should preserve localStorage on page refresh', async ({ page }) => {
-    // Load PDF and add data
     await loadSamplePDF(page);
-    await fillStudyIdentification(page, {
-      citation: 'Persistence Test',
-      year: '2024',
-    });
+
+    // Only an extraction reaches the store below; typing into a form field records nothing, so the citation has to come from a PDF selection.
+    await page.click('#citation');
+    await simulateTextSelection(page, { x: 100, y: 100 }, { x: 300, y: 100 });
 
     // Wait for data to be saved
     await page.waitForTimeout(1000);

@@ -5,11 +5,11 @@
 
 /**
  * Core Logic Integration Test
- * 
+ *
  * This file verifies the business logic of the application
  * (State Management -> Agent Orchestration -> AI Service)
  * without requiring the full React UI or a browser environment.
- * 
+ *
  * Tests the integration between:
  * - AppStateManager: Global state management with observer pattern
  * - AgentOrchestrator: Multi-agent coordination for medical data extraction
@@ -21,15 +21,10 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 // Mock dependencies BEFORE any imports that might use them
 // This prevents import.meta errors in MedicalAgentBridge
 jest.mock('../../src/services/MedicalAgentBridge', () => ({
+  __esModule: true,
   default: {
-    callAgent: jest.fn().mockResolvedValue({
-      agentName: 'MockAgent',
-      confidence: 0.9,
-      extractedData: {},
-      processingTime: 1000,
-      validationStatus: 'validated'
-    })
-  }
+    callAgent: jest.fn(),
+  },
 }));
 jest.mock('../../src/services/BackendClient');
 
@@ -44,7 +39,7 @@ describe('System Core Logic Integration', () => {
     // Reset state to clean slate for each test
     // Using the internal test method to ensure complete reset
     (AppStateManager as any).__resetForTesting();
-    
+
     // Clear all mocks
     jest.clearAllMocks();
   });
@@ -52,7 +47,7 @@ describe('System Core Logic Integration', () => {
   describe('AppStateManager', () => {
     it('should initialize with default state', () => {
       const state = AppStateManager.getState();
-      
+
       // Verify initial state matches expected defaults
       expect(state.pdfDoc).toBeNull();
       expect(state.currentPage).toBe(1);
@@ -177,7 +172,7 @@ describe('System Core Logic Integration', () => {
         sourceQuote: 'Patient demographics from table',
         pageNumber: 1
       };
-      MedicalAgentBridge.callAgent = jest.fn().mockResolvedValue(mockAgentResult);
+      (MedicalAgentBridge.callAgent as any).mockResolvedValue(mockAgentResult);
 
       // Process the data through the orchestrator
       const result = await AgentOrchestrator.processExtractedData(
@@ -239,7 +234,7 @@ describe('System Core Logic Integration', () => {
         processingTime: 1200,
         validationStatus: 'validated'
       };
-      MedicalAgentBridge.callAgent = jest.fn().mockResolvedValue(mockAgentResult);
+      (MedicalAgentBridge.callAgent as any).mockResolvedValue(mockAgentResult);
 
       const result = await AgentOrchestrator.processExtractedData([], [demographicsTable]);
 
@@ -298,7 +293,7 @@ describe('System Core Logic Integration', () => {
         validationStatus: 'validated',
         sourceQuote: 'Outcomes data from clinical trial'
       };
-      MedicalAgentBridge.callAgent = jest.fn().mockResolvedValue(mockAgentResult);
+      (MedicalAgentBridge.callAgent as any).mockResolvedValue(mockAgentResult);
 
       // Step 3: Process with orchestrator
       const result = await AgentOrchestrator.processExtractedData([], [mockTable]);
@@ -325,7 +320,7 @@ describe('System Core Logic Integration', () => {
 
       // Attempt to check if another operation should be allowed
       const state = AppStateManager.getState();
-      
+
       if (state.isProcessing) {
         // In real code, this would prevent starting another operation
         expect(state.isProcessing).toBe(true);
@@ -333,7 +328,7 @@ describe('System Core Logic Integration', () => {
 
       // Complete processing
       AppStateManager.setState({ isProcessing: false });
-      
+
       // Now another operation could start
       const newState = AppStateManager.getState();
       expect(newState.isProcessing).toBe(false);
@@ -362,11 +357,11 @@ describe('System Core Logic Integration', () => {
         processingTime: 500,
         validationStatus: 'failed'
       };
-      MedicalAgentBridge.callAgent = jest.fn().mockResolvedValue(mockFailedResult);
+      (MedicalAgentBridge.callAgent as any).mockResolvedValue(mockFailedResult);
 
       // Should not throw, but handle gracefully
       const result = await AgentOrchestrator.processExtractedData([], [mockTable]);
-      
+
       expect(result).toBeDefined();
       expect(result.enhancedTables).toHaveLength(1);
       // Even with failed agents, structure should be preserved
@@ -374,20 +369,20 @@ describe('System Core Logic Integration', () => {
 
     it('should maintain state consistency after errors', () => {
       const initialState = AppStateManager.getState();
-      
+
       try {
         // Simulate an error during state update
         AppStateManager.setState({ isProcessing: true });
-        
+
         // Even if an error occurs, state should be updated
         const currentState = AppStateManager.getState();
         expect(currentState.isProcessing).toBe(true);
-        
+
       } finally {
         // Cleanup
         AppStateManager.setState({ isProcessing: false });
       }
-      
+
       // State should be recoverable
       const finalState = AppStateManager.getState();
       expect(finalState.isProcessing).toBe(false);

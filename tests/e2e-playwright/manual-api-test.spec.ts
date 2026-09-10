@@ -14,6 +14,12 @@ import { waitForAIProcessing } from './helpers/ai-helpers';
 
 test.describe('Manual Real-World API Test', () => {
   test('should generate PICO with real Gemini API - like a real user', async ({ page }) => {
+    // This one deliberately calls Gemini for real, so it needs a key rather than a mock and there is nothing to assert without one.
+    test.skip(
+      !process.env.GEMINI_API_KEY && !process.env.VITE_GEMINI_API_KEY,
+      'Set GEMINI_API_KEY to exercise the real PICO generation',
+    );
+
     // Set longer timeout for real API call
     test.setTimeout(120000); // 2 minutes
 

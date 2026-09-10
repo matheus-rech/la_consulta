@@ -128,11 +128,12 @@ test.describe('Form Navigation and Multi-Step Wizard', () => {
     // On step 8, next button should be disabled (or show submit)
     await navigateToStep(page, 8);
 
-    // Either next button is disabled or submit button is visible
+    // The last step takes the Next control away rather than disabling it, and either way the point is that there is nowhere further to advance.
     const nextBtnDisabled = await nextBtn.isDisabled().catch(() => false);
+    const nextBtnHidden = await nextBtn.isHidden().catch(() => false);
     const submitBtnVisible = await page.locator('#submit-gsheets-btn').isVisible().catch(() => false);
 
-    expect(nextBtnDisabled || submitBtnVisible).toBe(true);
+    expect(nextBtnDisabled || nextBtnHidden || submitBtnVisible).toBe(true);
 
     // Previous button should be enabled
     await expect(prevBtn).toBeEnabled();

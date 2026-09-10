@@ -54,6 +54,9 @@ export function calculateBoundingBox(items: TextItem[]): Coordinates {
  * @returns Normalized coordinates with x/y structure
  */
 export function normalizeCoordinates(coords: Coordinates): Coordinates {
+    if (!coords) {
+        return { x: 0, y: 0, width: 0, height: 0 };
+    }
     return {
         x: coords.x ?? coords.left ?? 0,
         y: coords.y ?? coords.top ?? 0,
